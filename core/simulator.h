@@ -12,21 +12,23 @@
 #include "node.h"
 #include "scheduler.h"
 
-class Simulator {
+// This is the overall simulation environment
+static class Simulator {
 public:
-	Simulator(char*);
+	Simulator();
 	~Simulator() {
-		fclose(configFile_);
+		if(configFile_)
+			fclose(configFile_);
 		delete[] nodes_;
 	}
 	
-	void init();
+	void init(char*);
 	void run();
 private:
 	FILE *configFile_; //Input config file
 	int nnodes_, pktSize_;
 	char proto[128]; //Protocol name
 	Node *nodes_; //Array of node objects
-};
+} simulator;
 
 #endif

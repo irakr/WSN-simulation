@@ -7,19 +7,25 @@
 #include "simulator.h"
 #include <string.h>
 
-Simulator :: Simulator(char *ifile) {
-	configFile_ = fopen(ifile, "r");
-	if(!configFile_) {
-		fprintf(stderr, "[ERROR]: Could not open simulation file %s", ifile);
-		exit(1);
-	}
-	init();
+Simulator :: Simulator() {
+	configFile_ = NULL;
+	nodes_ = NULL;
+	nnodes_ = 0;
+	pktSize_ = 0;
+	strcpy(proto, "");
 }
 
 /* Extracts simulation and network configuration data from the input file and initializes
  * the environment.
  */
-void Simulator :: init() {
+void Simulator :: init(char *config_file) {
+	
+	configFile_ = fopen(config_file, "r");
+	if(!configFile_) {
+		fprintf(stderr, "[ERROR]: Could not open simulation file %s", configFile_);
+		exit(1);
+	}
+	
 	char line[512] = "", *temp;
 	while(!feof(configFile_)) {
 		fgets(line, 512, configFile_);
@@ -77,37 +83,21 @@ void Simulator :: init() {
 	}
 }
 
+//
+//
+//
+//	Run simulator
+//
+//
+
 void Simulator :: run() {
+	Packet *p = new Packet();
+	p->sourceId_ = 0;
+	p->destId_ = 1;
+	strcpy(p->payload, "HELLO");
+	for(int i=0; i<1024; i++) {
+		nodes_[0].enqueuePkt(p);
+		nodes_[0].send(&nodes_[1]);
+	}
 	
-}
-
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-/*
- * --------------------------------------- MAIN ENTRY POINT --------------------------------------
- */
-
-int main(int argc, char *argv[]) {
-	if(argc == 1) {
-		fprintf(stderr, "[ERROR]: Please provide a configuration file.\n");
-		exit(1);
-	}
-	if(argc > 2) {
-		fprintf(stderr, "[ERROR]: Cannot take more than one config file.\n");
-		exit(1);
-	}
-	Simulator *simulator = new Simulator(argv[1]);
-	Node n1, n2;
-	n1.addNeighbour(&n2);
-	return 0;
 }

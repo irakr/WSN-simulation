@@ -12,6 +12,8 @@
 #include <iostream>
 #include <vector>
 
+#define DEFAULT_QUEUE_LIMIT 512
+
 // Represents a wireless sensor node
 class Node {
 public:
@@ -19,6 +21,7 @@ public:
 		id_ = ids_++;
 		location_.x = location_.y = location_.z = 0;
 		nextHop_ = NULL;
+		queueLimit_ = DEFAULT_QUEUE_LIMIT;
 	}
 	
 	// Accessors
@@ -30,9 +33,15 @@ public:
 	Coordinate& location() { return location_; }
 	void location(int x, int y, int z) { location_.x = x; location_.y = y; location_.z = z; }
 	
-	// Functions
+	// Functions ...
+	
 	void nextHop(Node *n) { nextHop_ = n;}
 	void addNeighbour(Node*);	// Add a neighbour to the neighbour list
+	
+	int enqueuePkt(Packet*);
+	int dequeuePkt();
+	int send(Node*);
+	int recv(Packet*);
 	
 private:
 	static int ids_;	//ID generated and ID count
@@ -40,13 +49,14 @@ private:
 	// Network layer properties
 	int id_;	//ID or address
 	Node *nextHop_;	//Next hop node selected by routing protocol
-	std::vector<Node> neighbours_; //List of neighbour nodes
+	std :: vector<Node> neighbours_; //List of neighbour nodes
 	
 	// MAC layer properties
 	Coordinate location_;
 	double energy_;
 	double transmissionRange_;
-	
+	std :: vector<Packet> pktQueue;
+	int queueLimit_;	//Max pktqueue size after which the packets will be dropped. //TODO... Have to take as input
 	
 	//Protocol Stack functionalities
 	NetworkLayer networkLayer_;

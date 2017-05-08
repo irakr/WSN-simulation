@@ -107,6 +107,7 @@ int main(int argc, char *argv[]) {
 		exit(1);
 	}
 	Simulator *simulator = new Simulator(argv[1]);
-	
+	Node n1, n2;
+	n1.addNeighbour(&n2);
 	return 0;
 }

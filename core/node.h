@@ -17,6 +17,8 @@ class Node {
 public:
 	Node() {
 		id_ = ids_++;
+		location_.x = location_.y = location_.z = 0;
+		nextHop_ = NULL;
 	}
 	
 	// Accessors
@@ -27,7 +29,11 @@ public:
 	void transmissionRange(double val) { transmissionRange_ = val; }
 	Coordinate& location() { return location_; }
 	void location(int x, int y, int z) { location_.x = x; location_.y = y; location_.z = z; }
-
+	
+	// Functions
+	void nextHop(Node *n) { nextHop_ = n;}
+	void addNeighbour(Node*);	// Add a neighbour to the neighbour list
+	
 private:
 	static int ids_;	//ID generated and ID count
 	

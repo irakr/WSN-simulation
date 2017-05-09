@@ -13,9 +13,9 @@ INCLUDE_DIRS=-I$(ALL_DIR)
 DEFINES=
 
 # Files
-CORE_SRC=$(CORE_DIR)net.cc $(CORE_DIR)node.cc $(CORE_DIR)mac.cc $(CORE_DIR)scheduler.cc \
+CORE_SRC=$(CORE_DIR)net.cc $(CORE_DIR)node.cc $(CORE_DIR)mac.cc  \
 	$(CORE_DIR)simulator.cc $(CORE_DIR)trace.cc $(CORE_DIR)energy.cc \
-	$(CORE_DIR)link.cc
+	$(CORE_DIR)link.cc $(CORE_DIR)senseEvent.cc
 
 ALL_SRC=$(CORE_SRC) ./proto.cc ./main.cc
 

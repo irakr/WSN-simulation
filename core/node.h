@@ -49,16 +49,16 @@ private:
 	// Network layer properties
 	int id_;	//ID or address
 	Node *nextHop_;	//Next hop node selected by routing protocol
-	std :: vector<Node> neighbours_; //List of neighbour nodes
+	std::vector<Node> neighbours_; //List of neighbour nodes
 	
 	// MAC layer properties
 	Coordinate location_;
 	double energy_;
 	double transmissionRange_;
-	std :: vector<Packet> pktQueue;
+	std::vector<Packet> pktQueue;
 	int queueLimit_;	//Max pktqueue size after which the packets will be dropped. //TODO... Have to take as input
 	
-	//Protocol Stack functionalities
+	//Protocol Stack functionalities ///XXX...Not required
 	NetworkLayer networkLayer_;
 	MACLayer macLayer_;
 };

@@ -16,8 +16,9 @@ int main(int argc, char *argv[]) {
 	}
 	
 	// Initialize simulation environment
+	(new Simulator());
+	Simulator& simulator = Simulator :: instance();
 	simulator.init(argv[1]);
-	
 	// Start simulation
 	simulator.run();
 	return 0;

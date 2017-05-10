@@ -32,5 +32,6 @@ debug:	$(ALL_SRC)
 
 clean:
 	-rm *.o
+	-rm *.tr
 	#-rm $(CORE_DIR)*.o
 	-rm -rf $(BIN_DIR)sim

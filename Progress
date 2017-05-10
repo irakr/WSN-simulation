@@ -1,0 +1,15 @@
+1) Basic node functionalities:
+  - send() packet
+  - recv() packet
+  - enqueue() packet
+  - dequeue() packet
+
+2) Simulator module functionalities:
+  - init() system from config file
+  - insert() event to event list
+  - dequeue() event from event list
+  - dispatch() event. [Partially done]
+  - run() simulation. [Partially done]
+
+3) SenseEvent functions:
+  - handle() event. [To be done]

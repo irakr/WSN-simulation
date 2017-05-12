@@ -37,7 +37,7 @@ class Handler {
  public:
  	Handler() {}
 	~Handler () {}
-	virtual void handle(Event*) = 0;
+	virtual void handle(Event*) {};
 };
 
 /* start time (secs) */
@@ -74,11 +74,15 @@ public:
 		return SCHED_START;
 	}
 	void reset();
+	
+	Node* node(int i) { if(i < nnodes_) return (nodes_[i]); else return NULL; }
+	void createTopology(); //Connect all the nodes according to their distances
+	
 private:
 	FILE *configFile_; //Input config file
-	int nnodes_, pktSize_;
+	int nnodes_;
 	char proto[128]; //Protocol name
-	Node *nodes_; //Array of node objects
+	Node **nodes_; //Array of node objects ([index] == id_)
 	
 	// Scheduling properties
 	Event *eventList_, *tail_;

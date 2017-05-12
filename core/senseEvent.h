@@ -16,7 +16,7 @@ public:
 
 class SenseEventHandler : public Handler {
 public:
-	void handle(Event*);
+	virtual void handle(Event*);
 	
 };
 

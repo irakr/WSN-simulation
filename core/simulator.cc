@@ -16,7 +16,6 @@ Simulator :: Simulator() {
 	configFile_ = NULL;
 	nodes_ = NULL;
 	nnodes_ = 0;
-	pktSize_ = 0;
 	strcpy(proto, "");
 	eventList_ = NULL;
 	instance_ = this;
@@ -51,7 +50,9 @@ void Simulator :: init(char *config_file) {
 			//Get the value
 			temp = strtok(NULL, "=");
 			nnodes_ = atoi(temp);
-			nodes_ = new Node[nnodes_];
+			nodes_ = new Node*[nnodes_];
+			for(int k=0; k<nnodes_; k++)
+				nodes_[k] = new Node(nnodes_); //XXX
 		}
 		else if(strcmp(temp, "Attributes") == 0) {	// Node attributes(Location coordinates, energy, etc...)
 			for(int i = 0; i < nnodes_; i++) {	// There must be nnodes_ lines that defines the node attributes from this point on.
@@ -63,23 +64,62 @@ void Simulator :: init(char *config_file) {
 				
 				//Transmission Range value
 				temp = strtok(NULL, ":");
-				nodes_[i].transmissionRange(atof(temp));
+				nodes_[i]->transmissionRange(atof(temp));
 				
 				// Energy level
 				temp = strtok(NULL, ":");
-				nodes_[i].energy(atof(temp));
+				nodes_[i]->energy(atof(temp));
 				
-				//Packet size
+				// NodeType = CH,ACH,NCH
 				temp = strtok(NULL, ":");
-				pktSize_ = atoi(temp);
+				if(strcmp(temp, "CH") == 0)
+					nodes_[i]->nodeType(CH);
+				else if(strcmp(temp, "ACH") == 0)
+					nodes_[i]->nodeType(ACH);
+				else if(strcmp(temp, "NCH") == 0)
+					nodes_[i]->nodeType(NCH);
+				else if(strcmp(temp, "BS") == 0)
+					nodes_[i]->nodeType(BS);
+				else {
+					fprintf(stderr, "[ERROR]: Unknown node type '%s'\n", temp);
+					exit(1);
+				}
+				
+				/* XXX...To be removed
+				// Neighbour nodes
+				temp = strtok(NULL, ":");
+				char *neighbors = new char[strlen(temp)+1];
+				strcpy(neighbors, temp);
+				// Rest of the operations are done below...
+				*/
 				
 				//TODO...Anymore attribute then add here
 				
 				//Extract coordinates
-				nodes_[i].location().x = atoi(strtok(coord, ","));
-				nodes_[i].location().y = atoi(strtok(NULL, ","));
-				nodes_[i].location().z = atoi(strtok(NULL, ","));
-			}
+				nodes_[i]->location().x = atoi(strtok(coord, ","));
+				nodes_[i]->location().y = atoi(strtok(NULL, ","));
+				nodes_[i]->location().z = atoi(strtok(NULL, ","));
+				
+				/* XXX...To be removed
+				//Assigning neighbour nodes. Edges are undirected. So there will two-way binding of neighbors.
+				neighbors++; // Just neglecting the '{' character
+				neighbors[strlen(neighbors)-1] = '\0';	// similarly '}'
+				printf("Neighbors: %s\n",neighbors);
+				if(*neighbors == '\0')
+					continue;
+				// FIXME...
+				char *t = strtok(neighbors, ",");
+				nodes_[i]->addNeighbour(atoi(t));
+				nodes_[atoi(t)]->addNeighbour(i);
+				while((t=strtok(NULL, ","))) {
+					nodes_[i]->addNeighbour(atoi(t));
+					nodes_[atoi(t)]->addNeighbour(i);
+				}
+				*/
+				
+			}//for
+			// Create the graph of the given topology
+			createTopology();
 		}
 		else if(strcmp(temp, "Events") == 0) {	//Event scheduling
 			while(strcmp(Fgets(line, 512, configFile_), "") != 0) {
@@ -110,7 +150,18 @@ void Simulator :: init(char *config_file) {
 	}
 }
 
-// Insert/Enqueue event to the event list
+//Connect all the nodes according to their distances
+void Simulator :: createTopology() {
+	int i, j;
+	for(i=0; i<nnodes_; i++) {
+		for(j=0; j<nnodes_; j++) {
+			nodes_[i]->addNeighbour(j);
+		}
+	}
+	printf("[INFO]: Network Topology created\n");
+}
+
+// Insert/Enqueue event to the event list. Insert to tail, i.e, right ended.
 void Simulator :: insert(Event *e) {
 	Event *ptr = eventList_;
 	if(ptr == NULL) {
@@ -130,7 +181,7 @@ void Simulator :: insert(Event *e) {
 	ptr->next_ = NULL;
 }
 
-// Remove/Dequeue event from the event list
+// Remove/Dequeue event from the event list. Remove from head, i.e., left ended.
 Event* Simulator :: deque() {
 	Event *ptr = eventList_;
 	if(!ptr)

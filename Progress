@@ -13,3 +13,6 @@
 
 3) SenseEvent functions:
   - handle() event. [To be done]
+  
+4) Network topology:
+  - createTopology()

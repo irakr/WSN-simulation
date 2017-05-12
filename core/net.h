@@ -8,17 +8,24 @@
 
 #include <string.h>
 
+#define DEFAULT_PKTSIZE	sizeof(Packet)
+
 // A generic packet format
 struct Packet {
 	// Header
 	int sourceId_, destId_;
 	
 	//Payload
-	char payload[128];
+	char payload_[128];
 	
 	Packet() {
 		sourceId_ = destId_ = 0;
-		strcpy(payload, "");
+		strcpy(payload_, "");
+	}
+	Packet(int s, int d, const char *payload) {
+		sourceId_ = s;
+		destId_ = d;
+		strcpy(payload_, payload);
 	}
 };
 

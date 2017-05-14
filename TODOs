@@ -1,1 +1,7 @@
-- Add 'clusterNumber_' as a property of a node.
+- Cluster Neighbour Table generation [Done]
+- Selection of nextHop_ node
+- How to add destination address in a packet
+- Relaxation packet manipulation
+- Running simulation with multiple threads for a single event
+- Keeping track of simulationt time
+- Energy spent per bit

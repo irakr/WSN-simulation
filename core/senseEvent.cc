@@ -19,8 +19,8 @@ void SenseEventHandler :: handle(Event *e) {
 	Node *n = simulator.node(((SenseEvent*)e)->atNode_);
 	n->eventData(SOME_SENSOR_DATA);
 	
-	// Forward sensed data to its next hop node TODO
-	n->send(n->nextHop());
+	// Forward sensed data to its CH TODO
+	n->send(n->clusterHead());
 	
 	
 	// Produce trace data TODO

@@ -18,6 +18,8 @@ class SenseEventHandler : public Handler {
 public:
 	virtual void handle(Event*);
 	
+	
+	
 };
 
 #endif

@@ -76,13 +76,18 @@ public:
 	void reset();
 	
 	Node* node(int i) { if(i < nnodes_) return (nodes_[i]); else return NULL; }
+	Node** nodePtr(int i) { if(i < nnodes_) return (nodes_+i); else return NULL; }
+	Node* baseStation() {return bs_; }
+	int nClusters() { return nclusters_; }
 	void createTopology(); //Connect all the nodes according to their distances
 	
 private:
 	FILE *configFile_; //Input config file
 	int nnodes_;
+	int nclusters_;	//No of clusters
 	char proto[128]; //Protocol name
-	Node **nodes_; //Array of node objects ([index] == id_)
+	Node **nodes_; //Array of node pointer objects ([index] == id_)
+	Node *bs_;	//Base station node
 	
 	// Scheduling properties
 	Event *eventList_, *tail_;

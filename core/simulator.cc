@@ -18,6 +18,7 @@ Simulator :: Simulator() {
 	nnodes_ = 0;
 	strcpy(proto, "");
 	eventList_ = NULL;
+	nclusters_ = 0;
 	instance_ = this;
 }
 
@@ -57,9 +58,14 @@ void Simulator :: init(char *config_file) {
 		else if(strcmp(temp, "Attributes") == 0) {	// Node attributes(Location coordinates, energy, etc...)
 			for(int i = 0; i < nnodes_; i++) {	// There must be nnodes_ lines that defines the node attributes from this point on.
 				Fgets(line, 512, configFile_);
+				
+				// ID
+				temp = strtok(line, ":");
+				//printf("[Node %d]: ", atoi(temp));
+				
 				//Coordinates...Process still pending
 				char coord[64]="";
-				temp = strtok(line, ":");
+				temp = strtok(NULL, ":");
 				strcpy(coord, temp);
 				
 				//Transmission Range value
@@ -68,22 +74,34 @@ void Simulator :: init(char *config_file) {
 				
 				// Energy level
 				temp = strtok(NULL, ":");
+				if(atof(temp) > Node::maxEnergy()) {
+					fprintf(stderr, "[ERROR]: Energy of node(%d) = %lf is more than MaxEnergy = %lf.\n",	\
+								nodes_[i]->id(), nodes_[i]->energy(), Node::maxEnergy());
+					
+				}
 				nodes_[i]->energy(atof(temp));
 				
 				// NodeType = CH,ACH,NCH
 				temp = strtok(NULL, ":");
-				if(strcmp(temp, "CH") == 0)
+				if(strcmp(temp, "CH") == 0) {
 					nodes_[i]->nodeType(CH);
+					nclusters_++;
+				}
 				else if(strcmp(temp, "ACH") == 0)
 					nodes_[i]->nodeType(ACH);
 				else if(strcmp(temp, "NCH") == 0)
 					nodes_[i]->nodeType(NCH);
-				else if(strcmp(temp, "BS") == 0)
+				else if(strcmp(temp, "BS") == 0) {
 					nodes_[i]->nodeType(BS);
+					bs_ = nodes_[i];
+				}
 				else {
 					fprintf(stderr, "[ERROR]: Unknown node type '%s'\n", temp);
 					exit(1);
 				}
+				
+				// Cluster number
+				nodes_[i]->cluster(atoi(strtok(NULL, ":")));
 				
 				/* XXX...To be removed
 				// Neighbour nodes
@@ -93,33 +111,23 @@ void Simulator :: init(char *config_file) {
 				// Rest of the operations are done below...
 				*/
 				
+				
 				//TODO...Anymore attribute then add here
 				
 				//Extract coordinates
-				nodes_[i]->location().x = atoi(strtok(coord, ","));
-				nodes_[i]->location().y = atoi(strtok(NULL, ","));
-				nodes_[i]->location().z = atoi(strtok(NULL, ","));
+				int x = atoi(strtok(coord, ","));
+				int y = atoi(strtok(NULL, ","));
+				nodes_[i]->location(x, y, 0);
 				
-				/* XXX...To be removed
-				//Assigning neighbour nodes. Edges are undirected. So there will two-way binding of neighbors.
-				neighbors++; // Just neglecting the '{' character
-				neighbors[strlen(neighbors)-1] = '\0';	// similarly '}'
-				printf("Neighbors: %s\n",neighbors);
-				if(*neighbors == '\0')
-					continue;
-				// FIXME...
-				char *t = strtok(neighbors, ",");
-				nodes_[i]->addNeighbour(atoi(t));
-				nodes_[atoi(t)]->addNeighbour(i);
-				while((t=strtok(NULL, ","))) {
-					nodes_[i]->addNeighbour(atoi(t));
-					nodes_[atoi(t)]->addNeighbour(i);
-				}
-				*/
+				//XXX Uncomment this if you want to input z-axis too. But this has dependencies over other modules and input file.
+				//nodes_[i]->location().z = atoi(strtok(NULL, ","));
 				
 			}//for
 			// Create the graph of the given topology
 			createTopology();
+			// Generate Cluster neighbour Tables
+			for(int i=0; i<nnodes_; i++)
+				nodes_[i]->generateCLTable();
 		}
 		else if(strcmp(temp, "Events") == 0) {	//Event scheduling
 			while(strcmp(Fgets(line, 512, configFile_), "") != 0) {

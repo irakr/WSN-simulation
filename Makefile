@@ -7,7 +7,7 @@ ALL_DIR=$(CORE_DIR)
 
 # Compiler flags
 CC=g++
-CFLAGS=-Wall -Wno-write-strings -O3 -std=c++11
+CFLAGS=-Wall -Wno-write-strings -std=c++11
 DEBUG=-g
 INCLUDE_DIRS=-I$(ALL_DIR)
 DEFINES=
@@ -15,18 +15,22 @@ DEFINES=
 # Files
 CORE_SRC=$(CORE_DIR)net.cc $(CORE_DIR)node.cc $(CORE_DIR)mac.cc  \
 	$(CORE_DIR)simulator.cc $(CORE_DIR)trace.cc $(CORE_DIR)energy.cc \
-	$(CORE_DIR)link.cc $(CORE_DIR)senseEvent.cc
+	$(CORE_DIR)link.cc $(CORE_DIR)senseEvent.cc $(CORE_DIR)clTable.cc \
 
-ALL_SRC=$(CORE_SRC) ./proto.cc ./main.cc
+ALL_SRC=$(CORE_SRC) ./main.cc
+
+ALL_HEADERS=$(CORE_DIR)net.h $(CORE_DIR)node.h $(CORE_DIR)mac.h  \
+	$(CORE_DIR)simulator.h $(CORE_DIR)trace.h $(CORE_DIR)energy.h \
+	$(CORE_DIR)link.h $(CORE_DIR)senseEvent.h \
 
 OUTPUT=$(BIN_DIR)sim
 
 # Compilation
-sim:	$(ALL_SRC)
+sim:	$(ALL_SRC) $(ALL_HEADERS)
 	-mkdir $(BIN_DIR)
 	$(CC) $(CFLAGS) $(INCLUDE_DIRS) $(ALL_SRC) -o $(OUTPUT)
 
-debug:	$(ALL_SRC)
+debug:	$(ALL_SRC) $(ALL_HEADERS)
 	-mkdir $(BIN_DIR)
 	$(CC) $(CFLAGS) $(DEBUG) $(INCLUDE_DIRS) $(ALL_SRC) -o $(OUTPUT)
 

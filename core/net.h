@@ -7,8 +7,12 @@
 #define NET_H_
 
 #include <string.h>
+#include "node.h"
 
 #define DEFAULT_PKTSIZE	sizeof(Packet)
+
+#define BROADCAST_ADDRESS	-2
+#define UNKNOWN_ADDRESS		-1
 
 // A generic packet format
 struct Packet {
@@ -27,6 +31,14 @@ struct Packet {
 		destId_ = d;
 		strcpy(payload_, payload);
 	}
+};
+
+// Relaxation packet format
+typedef enum{RELAXATION, ACTIVATION} Notify_t;
+struct RelaxPacket : public Packet {
+	RelaxPacket() : Packet() {}
+	Notify_t type_;
+	double currentEnergy_;
 };
 
 class NetworkLayer {

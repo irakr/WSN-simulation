@@ -13,8 +13,8 @@ This file is used to create simulation environment according to the user's prefe
 
 
 # Implementation
-Core system language: C++.
-Input configuration script: My own format
-Analysis tools: gnuplot, python, etc.
+- Core system language: C++.
+- Input configuration script: My own format
+- Analysis tools: gnuplot, python, etc.
 
 #						ENJOY

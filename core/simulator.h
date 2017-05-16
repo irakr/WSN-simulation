@@ -81,6 +81,7 @@ public:
 	int nClusters() { return nclusters_; }
 	void createTopology(); //Connect all the nodes according to their distances
 	
+	double energyGapThreshold() { return energyGapThreshold_; }
 private:
 	FILE *configFile_; //Input config file
 	int nnodes_;
@@ -88,6 +89,9 @@ private:
 	char proto[128]; //Protocol name
 	Node **nodes_; //Array of node pointer objects ([index] == id_)
 	Node *bs_;	//Base station node
+	
+	// Protocol specific parameters
+	double energyGapThreshold_;
 	
 	// Scheduling properties
 	Event *eventList_, *tail_;

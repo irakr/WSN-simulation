@@ -17,7 +17,7 @@
 // A generic packet format
 struct Packet {
 	// Header
-	int sourceId_, destId_;
+	int sourceId_, destId_, forwarderId_;
 	
 	//Payload
 	char payload_[128];

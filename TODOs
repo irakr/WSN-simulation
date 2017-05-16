@@ -1,7 +1,17 @@
-- Cluster Neighbour Table generation [Done]
-- Selection of nextHop_ node
-- How to add destination address in a packet
-- Relaxation packet manipulation
+- Cluster Neighbour Table generation 													[Done]
+
+- Selection of nextHop_ node 															[Done]
+
+- How/when to add destination address in a packet 										[Done]
+
+- Set BS as next hop for nodes one hop away from the BS 								[Done]
+
+- Relaxation packet mechanism 															[Done]
+
+- Recursive routing function 															[Done]
+
 - Running simulation with multiple threads for a single event
+
 - Keeping track of simulationt time
+
 - Energy spent per bit

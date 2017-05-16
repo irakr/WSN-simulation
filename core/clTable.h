@@ -25,6 +25,8 @@ struct CTable {
 	int entryCounter_, maxEntries_;
 	CTableEntry **entry_;
 	void addEntry(CTableEntry*);
+	void sortByBSDistance();
+	CTableEntry* maxEnergyEntry();
 };
 
 #endif

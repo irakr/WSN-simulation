@@ -10,7 +10,7 @@
 #include <string.h>
 
 Simulator* Simulator :: instance_;
-int Event :: uids_ = 1;
+int Event :: uids_ = 0;
 
 Simulator :: Simulator() {
 	configFile_ = NULL;
@@ -74,12 +74,7 @@ void Simulator :: init(char *config_file) {
 				
 				// Energy level
 				temp = strtok(NULL, ":");
-				if(atof(temp) > Node::maxEnergy()) {
-					fprintf(stderr, "[ERROR]: Energy of node(%d) = %lf is more than MaxEnergy = %lf.\n",	\
-								nodes_[i]->id(), nodes_[i]->energy(), Node::maxEnergy());
-					
-				}
-				nodes_[i]->energy(atof(temp));
+				double energy = atof(temp); // Process is completed after identifying nodeType below.
 				
 				// NodeType = CH,ACH,NCH
 				temp = strtok(NULL, ":");
@@ -99,6 +94,18 @@ void Simulator :: init(char *config_file) {
 					fprintf(stderr, "[ERROR]: Unknown node type '%s'\n", temp);
 					exit(1);
 				}
+				
+				// (Contd.) Energy level
+				/* FIXME...
+				if((nodes_[i]->nodeType() != CH) && (energy > Node::maxEnergy())) {
+					fprintf(stderr, "[ERROR]: Energy of node(%d) = %lf is more than MaxEnergy = %lf.\n",	\
+								nodes_[i]->id(), energy, Node::maxEnergy());
+					exit(1);
+					
+				}
+				*/
+				nodes_[i]->energy(energy);
+				//printf("energy = %lf\n", nodes_[i]->energy());
 				
 				// Cluster number
 				nodes_[i]->cluster(atoi(strtok(NULL, ":")));
@@ -126,8 +133,13 @@ void Simulator :: init(char *config_file) {
 			// Create the graph of the given topology
 			createTopology();
 			// Generate Cluster neighbour Tables
-			for(int i=0; i<nnodes_; i++)
-				nodes_[i]->generateCLTable();
+			for(int i=0; i<nnodes_; i++) {
+				if(nodes_[i]->nodeType() != NCH) {
+					nodes_[i]->generateCLTable();
+					nodes_[i]->generateACLTable();
+				}
+			}
+			printf("[INFO]: Cluster neighbour Tables created\n");
 		}
 		else if(strcmp(temp, "Events") == 0) {	//Event scheduling
 			while(strcmp(Fgets(line, 512, configFile_), "") != 0) {
@@ -150,6 +162,10 @@ void Simulator :: init(char *config_file) {
 		else if(strcmp(temp, "Tracefile") == 0) {	// Trace file
 			(new Trace(strtok(NULL, "=")));
 			
+		}
+		else if(strcmp(temp, "EnergyGapThreshold") == 0) {	// energyGapThreshold
+			energyGapThreshold_ = (atof(strtok(NULL, "=")) / 100.0) * Node::maxEnergy();
+			printf("energyGapThreshold = %lf\n", energyGapThreshold_);
 		}
 		else {
 			// Unknown configuration
@@ -218,6 +234,7 @@ void Simulator :: run() {
 	while((e=deque())) {
 		dispatch(e);
 	}
+	nodes_[0]->notifyRelax();
 	
 	/* TESTING NODES
 	Packet *p = new Packet();

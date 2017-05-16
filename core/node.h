@@ -34,8 +34,8 @@ public:
 	
 	// Accessors
 	int id() { return id_; }
-	double energy() { return energy_; }
 	static double maxEnergy() { return maxEnergy_; }
+	double energy() { return energy_; }
 	void energy(double val) { energy_ = val; }
 	double transmissionRange() { return transmissionRange_; }
 	void transmissionRange(double val) { transmissionRange_ = val; }
@@ -56,7 +56,7 @@ public:
 	double distance(Node*, Node*); // Distance between two nodes
 	Node* clusterHead() { return neighbours_[clusterId_]; }
 	void generateCLTable();
-	
+	void generateACLTable();
 	Node *findAssistantCH(); //Store and return ACH node
 	//Just return the associated ACH node
 	Node *assistantCH() {return assistantCH_; }
@@ -66,11 +66,16 @@ public:
 	
 	// Perform routing logic
 	void routeLogic();
+	void selectNextHop();
+	void forwardData(); // This calls selectNextHop() and forwards packet to it.
 	
 	int enqueuePkt(Packet*);
 	int dequeuePkt();
-	int send(Node*);
-	int recv(Packet*);
+	int send(Node*);	// Send the first packet from the queue to node
+	int send(Node*, Packet*);	// Send the packet p to the node n(for special purposes)
+	int recv(Packet*);	// Recieve and enqueu packet p
+	int broadcast(Packet*);	// Broadcast packet p
+	int notifyRelax();	// Broadcast a relaxation packet
 	
 private:
 	static int ids_;	//ID generated and ID count
@@ -91,7 +96,7 @@ private:
 	Node *nextHop_;	//Next hop node selected by routing protocol TODO
 	Node **neighbours_; //List of neighbour nodes
 	int nneighbours_;	// No of neighbours
-	CTable *chTable_, *achTable_;
+	CTable *chTable_, *achTable_; //The tabl {M} as represented in the protocol
 	int pktSize_;
 	Node *assistantCH_;	// ACH node of a CH node. This remains NULL for NCH and ACH type nodes
 	

@@ -11,13 +11,14 @@
 
 class SenseEvent : public Event {
 public:
+	SenseEvent() : Event() {}
 	int atNode_; // ID of node where the event was sensed
 };
 
 class SenseEventHandler : public Handler {
 public:
 	virtual void handle(Event*);
-	
+	int routeToBs(Node*);	// Route packet from node to BS
 	
 	
 };

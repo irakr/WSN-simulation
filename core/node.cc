@@ -27,7 +27,7 @@ Node :: Node(int nneighbor) {
 	partitionEnergy();
 }
 	
-// Add a neighbour to the neighbour list
+// Add a neighbour to the neighbour list(Bi-directional, self-directional)
 int Node :: addNeighbour(int id) {
 	Simulator& simulator = Simulator::instance();
 	Node *n = simulator.node(id);
@@ -35,17 +35,26 @@ int Node :: addNeighbour(int id) {
 		fprintf(stderr, "[ERROR]: Unidentified Node. id=%d\n", id);
 		return -1;
 	}
-	printf("[Neighbour adding]: node(%d)<->node(%d) D=%lf", this->id_, n->id_, distance(this, n));
+	//printf("[Neighbour adding]: node(%d)<->node(%d) D=%lf", this->id_, n->id_, distance(this, n));
+	// Check distance to the other side
 	if(distance(this, n) > this->transmissionRange_)
 	{
 		//fprintf(stderr, "[WARNING]: addNeighbour() failed for node(%d). node(%d) is out of range\n", this->id_, n->id_);
-		putchar('\n');
+		//putchar('\n');
 		return -1;
 	}
 	
 	neighbours_[id] = n;
+	
+	// Check distance from the other side
+	if(distance(this, n) > n->transmissionRange_)
+	{
+		//fprintf(stderr, "[WARNING]: addNeighbour() failed for node(%d). node(%d) is out of range\n", n->id_, this->id_);
+		//putchar('\n');
+		return -1;
+	}
 	n->neighbours_[this->id_] = this;
-	printf(" [DONE]\n");
+	//printf(" [DONE]\n");
 	return 0;
 }
 
@@ -95,6 +104,20 @@ int Node :: send(Node *n) {
 	return 0;
 }
 
+// Send the packet p to the node n
+int Node :: send(Node *n, Packet *p) {
+	n->recv(p);
+	return 0;
+}
+
+// Broadcast packet p
+int Node :: broadcast(Packet *p) {
+	for(int i=0; i<nneighbours_; i++)
+		if(neighbours_[i] && (neighbours_[i] != this))
+			send(neighbours_[i], p);
+	return 0;
+}
+
 // Recieve and enqueue packet
 int Node :: recv(Packet *p) {
 	if(enqueuePkt(p) == -1) {
@@ -110,8 +133,10 @@ int Node :: recv(Packet *p) {
 // Generate application data by a Non-CH sensor node
 void Node :: eventData(const char* data) {
 	// Store data and enqueue into packet queue
+	char s[256]="";
 	strcpy(eventData_, data);
-	Packet p(this->id_, clusterHead()->id_, data);
+	sprintf(s, "%s [Node=%d, Cluster=%d]\n", data, id_, clusterId_);
+	Packet p(this->id_, clusterHead()->id_, s);
 	if(enqueuePkt(&p) == -1) {
 		//XXX... Possibly wait for queue to be available
 		fprintf(stderr, "[ERROR]: Packet queue is full. Application data will be dropped or waiting.\n");
@@ -119,10 +144,12 @@ void Node :: eventData(const char* data) {
 	
 }
 
+// TODO... Make similar function for 'achTable_'
 // Generate CLTable from the neighbour_ table. This is the table M that we defined in our protocol.
 // It contains those cluster neighbours which are closer to the BS(sink) than this node.
+// (Excludes itself in the Table)
 void Node :: generateCLTable() {
-	printf("[INFO]: Generating CLT for node(%d)\n", this->id_);
+	//printf("[INFO]: Generating CLT for node(%d)\n", this->id_);
 	if(this->nodeType_ == NCH) {
 		fprintf(stderr, "[WARNING]: CLT generation failed. node(%d) is of type NCH.\n", id_);
 		return;
@@ -134,7 +161,7 @@ void Node :: generateCLTable() {
 	double dist_to_bs;
 	double dist_to_me;
 	for(i=0; i<nneighbours_; i++) {
-		if(!neighbours_[i] || (neighbours_[i]->nodeType() != CH) || (this == neighbours_[i]))
+		if(!neighbours_[i] || ((neighbours_[i]->nodeType() != CH) && (neighbours_[i]->nodeType() != BS)) || (this == neighbours_[i]))
 			continue;
 		dist_to_bs = distance(neighbours_[i], sim.baseStation());
 		dist_to_me = distance(neighbours_[i], this);
@@ -145,8 +172,7 @@ void Node :: generateCLTable() {
 			entry->distance_to_BS_ = dist_to_bs;
 			entry->currentState_ = ACTIVE;	// XXX... May depend.
 			//Entry for Assistant CH node
-			//FIXME... See the output for CLT generation of node(1). Something is still missing.
-			if(nodeType_ == CH) {
+			if(neighbours_[i]->nodeType_ == CH) {
 				// Find its ACH and associate it
 				entry->assistantNode_ = neighbours_[i]->findAssistantCH();
 			}
@@ -154,6 +180,43 @@ void Node :: generateCLTable() {
 			delete entry;
 		}
 	}
+	// Sort the table contents in increasing order of 'distance_to_BS_' parameter.
+	chTable_->sortByBSDistance();
+}
+
+// Generate achTable_ from the neighbour_ table for assistant CH nodes. (Excludes self's ACH)
+void Node :: generateACLTable() {
+	//printf("[INFO]: Generating CLT for node(%d)\n", this->id_);
+	if(this->nodeType_ == NCH) {
+		fprintf(stderr, "[WARNING]: CLT generation failed. node(%d) is of type NCH.\n", id_);
+		return;
+	}
+	Simulator& sim = Simulator::instance();
+	CTableEntry *entry = NULL;
+	int i;
+	double me_to_bs = distance(this, sim.baseStation());
+	double dist_to_bs;
+	double dist_to_me;
+	for(i=0; i<nneighbours_; i++) {
+		if(!neighbours_[i] || (neighbours_[i]->nodeType() != ACH) ||	\
+			(neighbours_[i]->cluster() == this->cluster()) ||(this == neighbours_[i]))
+			continue;
+		dist_to_bs = distance(neighbours_[i], sim.baseStation());
+		dist_to_me = distance(neighbours_[i], this);
+		if(dist_to_bs < me_to_bs) {
+			entry = new CTableEntry;
+			entry->node_ = neighbours_[i];
+			entry->distance_to_me_ = dist_to_me;
+			entry->distance_to_BS_ = dist_to_bs;
+			entry->currentState_ = ACTIVE;	// XXX... May depend.
+			//Entry for Assistant CH node = NULL, since it is an ACH itself.
+			entry->assistantNode_ = NULL;
+			achTable_->addEntry(entry);
+			delete entry;
+		}
+	}
+	// Sort the table contents in increasing order of 'distance_to_BS_' parameter.
+	achTable_->sortByBSDistance();
 }
 
 //Compute and return the ACH of the CH node
@@ -164,7 +227,7 @@ Node* Node :: findAssistantCH() {
 		return NULL;
 	*/
 	if(assistantCH_) {
-		printf("[INFO]: Assistant node of %d is %d\n", id_, assistantCH_->id());
+		//printf("[INFO]: Assistant node of %d is %d\n", id_, assistantCH_->id());
 		return assistantCH_;
 	}
 	Simulator& sim = Simulator::instance();
@@ -176,7 +239,7 @@ Node* Node :: findAssistantCH() {
 			break;
 		}
 	}
-	printf("[INFO]: Assistant node of %d is %d\n", id_, assistantCH_->id());
+	//printf("[INFO]: Assistant node of %d is %d\n", id_, assistantCH_->id());
 	return assistantCH_;
 }
 
@@ -190,7 +253,40 @@ void Node :: partitionEnergy() {
 	}
 }
 
-// Perform routing logic
-void Node :: routeLogic() {
+// XXX... This is a protocol specific procedure. It may need changes often.
+// Select a next-hop node from chTable_ or achTable_
+void Node :: selectNextHop() {
+	CTableEntry** ptr = chTable_->entry_;	// Entries are already sorted in increasing distance_to_BS_ order
+	CTableEntry* maxEnergy = chTable_->maxEnergyEntry();
+	Simulator& sim = Simulator::instance();
+	while(*ptr != (CTableEntry*)0) {
+		// difference between 'highest_energy' and 'enery_of_currently_selected_node' is compared against energyGapThreshold
+		if(abs(maxEnergy->node_->energy() - ptr[0][0].node_->energy()) < sim.energyGapThreshold()) {
+			nextHop_ = ptr[0][0].node_;
+			break;
+		}
+		ptr++;
+	}
+	if(*ptr == (CTableEntry*)0) {
+		fprintf(stderr, "[INFO]: Next hop could not be decided for node(%d)\n", id_);
+		return;
+	}
+}
+
+// This calls selectNextHop() and forwards packet to it. Not called by 'NCH' nodes.
+void Node :: forwardData() {
+	selectNextHop();
+	send(nextHop_);
+}
+
+// Broadcast a relaxation packet. This packet is transmitted without being queued.
+int Node :: notifyRelax() {
+	RelaxPacket p;
+	p.sourceId_ = id_;
+	p.destId_ = BROADCAST_ADDRESS;
+	strcpy(p.payload_, "[Notify]: News for relaxtion.");
+	p.type_ = RELAXATION;
+	p.currentEnergy_ = energy_;
 	
+	return broadcast(&p);
 }

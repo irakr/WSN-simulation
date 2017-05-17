@@ -12,6 +12,9 @@ DEBUG=-g
 INCLUDE_DIRS=-I$(ALL_DIR)
 DEFINES=
 
+# PThread library
+LIB_PTHREAD=-lpthread
+
 # Files
 CORE_SRC=$(CORE_DIR)net.cc $(CORE_DIR)node.cc $(CORE_DIR)mac.cc  \
 	$(CORE_DIR)simulator.cc $(CORE_DIR)trace.cc $(CORE_DIR)energy.cc \
@@ -28,11 +31,11 @@ OUTPUT=$(BIN_DIR)sim
 # Compilation
 sim:	$(ALL_SRC) $(ALL_HEADERS)
 	-mkdir $(BIN_DIR)
-	$(CC) $(CFLAGS) $(INCLUDE_DIRS) $(ALL_SRC) -o $(OUTPUT)
+	$(CC) $(CFLAGS) $(INCLUDE_DIRS) $(ALL_SRC) -o $(OUTPUT) $(LIB_PTHREAD)
 
 debug:	$(ALL_SRC) $(ALL_HEADERS)
 	-mkdir $(BIN_DIR)
-	$(CC) $(CFLAGS) $(DEBUG) $(INCLUDE_DIRS) $(ALL_SRC) -o $(OUTPUT)
+	$(CC) $(CFLAGS) $(DEBUG) $(INCLUDE_DIRS) $(ALL_SRC) -o $(OUTPUT) $(LIB_PTHREAD)
 
 clean:
 	-rm *.o

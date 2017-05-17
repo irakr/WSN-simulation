@@ -222,19 +222,16 @@ Event* Simulator :: deque() {
 	return ptr;
 }
 
-// Execute an event...use  dequeue()  here in the caller
+// Execute an event
 void Simulator :: dispatch(Event *e) {
 	//clock_ = e->time_;
 	// TODO... run a new thread here
-	printf("System time : %lf\n", (double)::clock()/CLOCKS_PER_SEC);
+	printf("Pseudo system time : %lf\n", (PSEUDO_CURRENT_TIME));
 	printf("Simulator time : %lf\n", clock());
 	fflush(stdout);
-	//pthread_t tid;
-	//pthread_create(&tid, NULL, e->handler_->handle, e);
 	e->handler_->handle(e);
 	delete e;
 }
-
 
 //
 //
@@ -243,19 +240,21 @@ void Simulator :: dispatch(Event *e) {
 //
 void Simulator :: run() {
 	Event *e;
+	pthread_t tid;
+	pseudoStartTime_ = (double)::clock()/CLOCKS_PER_SEC;
+	printf("Pseudo start time = %lf\n", pseudoStartTime_);
 	while((e=deque())) {
-		while((clock_=(double)::clock()/CLOCKS_PER_SEC) < e->time_);
-		dispatch(e);
+		while((clock_ = (PSEUDO_CURRENT_TIME)) < e->time_);
+		pthread_create(&tid, NULL, &threadify, (void*)e);
+		pthread_join(tid, (void**)0);
+		
+		//dispatch(e);
 	}
 	
-	/* TESTING NODES
-	Packet *p = new Packet();
-	p->sourceId_ = 0;
-	p->destId_ = 1;
-	strcpy(p->payload, "HELLO");
-	for(int i=0; i<1024; i++) {
-		nodes_[0].enqueuePkt(p);
-		nodes_[0].send(&nodes_[1]);
-	}
-	*/
+}
+
+void* threadify(void *p) {
+	Event *e = (Event*)p;
+	Simulator::instance().dispatch(e);
+	return (void*)0;
 }

@@ -63,6 +63,7 @@ public:
 		return (*instance_);		// general access to scheduler
 	}
 	void schedule(Event*, Handler*,  double delay);	// sched later event
+	void dispatch(Event*);	// execute an event
 	void cancel(Event*);	// cancel event
 	void insert(Event*);	// schedule event
 	Event* lookup(int uid);	// look for event
@@ -72,9 +73,10 @@ public:
 		return (clock_);
 	}
 	
-	inline double start() {		// start time
-		return SCHED_START;
+	inline double pseudoStartTime() {		// start time
+		return pseudoStartTime_;
 	}
+	
 	void reset();
 	
 	Node* node(int i) { if(i < nnodes_) return (nodes_[i]); else return NULL; }
@@ -100,9 +102,14 @@ private:
 	
 	// Scheduling properties
 	Event *eventList_, *tail_;
-	void dispatch(Event*);	// execute an event
-	void dispatch(Event*, double);	// exec event, set clock_
 	double clock_; // Current simulation time
+	
+	// This is the time taken as a start point when the program actually reaches the run() method so that
+	// the time duration occupied by the initialization processes are neglected.
+	// The overall simulation time will offset with reference to this time, which means this time is actually = 0(pseudo)
+	double pseudoStartTime_;
+#define PSEUDO_CURRENT_TIME	((double) ::clock()/CLOCKS_PER_SEC - pseudoStartTime())
+
 	clock_t systemClock_;	// Process's clock time
 	int halted_;
 	static Simulator* instance_;
@@ -110,4 +117,8 @@ private:
 	
 };
 
+
+
+// A function to be start point of a thread
+void* threadify(void *);
 #endif

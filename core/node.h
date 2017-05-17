@@ -61,8 +61,9 @@ public:
 	//Just return the associated ACH node
 	Node *assistantCH() {return assistantCH_; }
 	
-	// Generate threshold energy partition
-	void partitionEnergy();
+	
+	void partitionEnergy(); // Generate threshold energy partition
+	int reachedThreshold(); // Check if energy level has reached a threshold
 	
 	// Perform routing logic
 	void routeLogic();
@@ -87,7 +88,7 @@ private:
 	double energy_, thresholdEnergy_[ENERGY_DIVISION+1];
 	double transmissionRange_;
 	std::vector<Packet> pktQueue_;
-	int queueLimit_;	//Max pktqueue size after which the packets will be dropped.
+	unsigned int queueLimit_;	//Max pktqueue size after which the packets will be dropped.
 	
 	// Network layer properties
 	int id_;	//ID or address

@@ -82,6 +82,9 @@ public:
 	void createTopology(); //Connect all the nodes according to their distances
 	
 	double energyGapThreshold() { return energyGapThreshold_; }
+	
+	void killNode(Node*);	// Remove node from the network
+	
 private:
 	FILE *configFile_; //Input config file
 	int nnodes_;

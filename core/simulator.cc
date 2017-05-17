@@ -185,6 +185,11 @@ void Simulator :: createTopology() {
 	printf("[INFO]: Network Topology created\n");
 }
 
+// Remove node from the network
+void Simulator :: killNode(Node *n) {
+	printf("Node(%d) removed from the network.\n", n->id());
+}
+
 // Insert/Enqueue event to the event list. Insert to tail, i.e, right ended.
 void Simulator :: insert(Event *e) {
 	Event *ptr = eventList_;
@@ -234,7 +239,6 @@ void Simulator :: run() {
 	while((e=deque())) {
 		dispatch(e);
 	}
-	nodes_[0]->notifyRelax();
 	
 	/* TESTING NODES
 	Packet *p = new Packet();

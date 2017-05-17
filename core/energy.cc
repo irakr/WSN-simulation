@@ -3,3 +3,28 @@
  *
  * Implementation of energy model of wireless node.
  */
+
+#include "energy.h"
+#include "simulator.h"
+
+const double Energy :: energyPerBitTx = 1.0;
+const double Energy :: energyPerBitRx = 0.5;
+const double Energy :: energyPerBitSensor = 0.2;
+
+
+// Reduce energy level according operation type. Then check whether it is required to broadcast a relaxation packet.
+void Energy :: spend(Node *n, EnergyConsumption_t type) {
+	double energy = n->energy();
+	if(type == TX)
+		n->energy(energy - energyPerBitTx);
+	else if(type == RX)
+		n->energy(energy - energyPerBitRx);
+	else if(type == SENSOR)
+		n->energy(energy - energyPerBitSensor);
+	
+	// Check for threshold
+	if(n->reachedThreshold() == 0)
+		n->notifyRelax();
+	else if(n->reachedThreshold() == -2)
+		Simulator::instance().killNode(n);
+}

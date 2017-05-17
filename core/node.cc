@@ -6,6 +6,7 @@
 
 #include "node.h"
 #include "simulator.h"
+#include "energy.h"
 #include <math.h>
 
 int Node :: ids_ = 0;	//ID generated and ID count
@@ -101,12 +102,16 @@ int Node :: send(Node *n) {
 	dequeuePkt();
 	p1->destId_ = n->id_;
 	n->recv(p1);
+	
+	Energy::spend(this, TX);	//energy consumption by transmitter
+	
 	return 0;
 }
 
 // Send the packet p to the node n
 int Node :: send(Node *n, Packet *p) {
 	n->recv(p);
+	Energy::spend(this, TX); //energy consumption by transmitter
 	return 0;
 }
 
@@ -127,6 +132,9 @@ int Node :: recv(Packet *p) {
 	}
 	Packet& p1 = pktQueue_.front();
 	printf("[PACKET_RECIEVED]: s=%d d=%d payload='%s'\n", p1.sourceId_, p1.destId_, p1.payload_); 
+	
+	Energy::spend(this, RX); //energy consumption by receiver
+	
 	return 0;
 }
 
@@ -141,7 +149,7 @@ void Node :: eventData(const char* data) {
 		//XXX... Possibly wait for queue to be available
 		fprintf(stderr, "[ERROR]: Packet queue is full. Application data will be dropped or waiting.\n");
 	}
-	
+	Energy::spend(this, SENSOR);	//energy consumption by sensor
 }
 
 // TODO... Make similar function for 'achTable_'
@@ -251,6 +259,31 @@ void Node :: partitionEnergy() {
 	for(int i=1; i<ENERGY_DIVISION; i++) {
 		thresholdEnergy_[i] = thresholdEnergy_[i-1] - perDivisionEnergy;
 	}
+	/*
+	printf("Energy Partitions = ");
+	for(int i=0; i<ENERGY_DIVISION+1; i++)
+		printf("%.2lf\t", thresholdEnergy_[i]);
+	printf("\n");
+	*/
+}
+
+// Check if energy level has reached a threshold
+int Node :: reachedThreshold() {
+	// Keeps track of currently in which partition the energy level of the node lies(Lower bound of a partition)
+	// If this value goes beyond (ENERGY_DIVISION+1), the battery is dead.
+	static int thresholdLevel = 1;
+	
+	// XXX... Not tested yet
+	if(thresholdLevel > ENERGY_DIVISION+1) {
+		printf("[INFO]: Node(%d) is dead\n", id_);
+		return -2;
+	}
+	if(energy_ <= thresholdEnergy_[thresholdLevel]) {
+		thresholdLevel++;
+		return 0;
+	}
+	return -1;
+		
 }
 
 // XXX... This is a protocol specific procedure. It may need changes often.

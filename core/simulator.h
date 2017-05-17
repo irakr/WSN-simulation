@@ -9,6 +9,8 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <time.h>
+#include <unistd.h>
 #include "node.h"
 #include "trace.h"
 
@@ -101,6 +103,7 @@ private:
 	void dispatch(Event*);	// execute an event
 	void dispatch(Event*, double);	// exec event, set clock_
 	double clock_; // Current simulation time
+	clock_t systemClock_;	// Process's clock time
 	int halted_;
 	static Simulator* instance_;
 	static int uid_; // The UID of the event that it is currently pointing to.

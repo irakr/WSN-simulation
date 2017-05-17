@@ -2,7 +2,7 @@
 
 - Assistant Cluster Neighbour Table generation 											[Done]
 
-- Selection of nextHop_ node 															[Done]
+- Selection of nextHop_ node 															[Done; May require modifications]
 
 - How/when to add destination address in a packet 										[Done]
 
@@ -16,6 +16,8 @@
 
 - Keeping track of simulationt time
 
-- Energy consumption mechanism	[Partially done]
-	> Energy spent per bit = Joules per bit	[Done]
-	> Invoke relaxation packet transmission on threshold energy level
+- Energy consumption mechanism															[Partially Done]
+	> Energy spent per bit = Joules per bit	[Not done as per mentioned]
+	> Invoke relaxation packet transmission on threshold energy level [Done]
+	
+- Generating trace data

@@ -17,7 +17,7 @@ public:
 
 class SenseEventHandler : public Handler {
 public:
-	virtual void handle(Event*);
+	virtual void handle(Event*);	//This is a multithreaded function
 	int routeToBs(Node*);	// Route packet from node to BS
 	
 	

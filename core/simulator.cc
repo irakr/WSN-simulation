@@ -7,6 +7,7 @@
 #include "simulator.h"
 #include "wrappers.h"
 #include "senseEvent.h"
+#include <pthread.h>
 #include <string.h>
 
 Simulator* Simulator :: instance_;
@@ -223,7 +224,13 @@ Event* Simulator :: deque() {
 
 // Execute an event...use  dequeue()  here in the caller
 void Simulator :: dispatch(Event *e) {
-	clock_ = e->time_;
+	//clock_ = e->time_;
+	// TODO... run a new thread here
+	printf("System time : %lf\n", (double)::clock()/CLOCKS_PER_SEC);
+	printf("Simulator time : %lf\n", clock());
+	fflush(stdout);
+	//pthread_t tid;
+	//pthread_create(&tid, NULL, e->handler_->handle, e);
 	e->handler_->handle(e);
 	delete e;
 }
@@ -237,6 +244,7 @@ void Simulator :: dispatch(Event *e) {
 void Simulator :: run() {
 	Event *e;
 	while((e=deque())) {
+		while((clock_=(double)::clock()/CLOCKS_PER_SEC) < e->time_);
 		dispatch(e);
 	}
 	

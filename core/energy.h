@@ -14,6 +14,7 @@ class Energy {
 public:
 	static void spend(Node*, EnergyConsumption_t);
 private:
+	// XXX... Currently these values are per operation rather than per bit.
 	static const double energyPerBitTx;
 	static const double energyPerBitRx;
 	static const double energyPerBitSensor;

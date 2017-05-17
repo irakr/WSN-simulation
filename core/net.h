@@ -7,7 +7,7 @@
 #define NET_H_
 
 #include <string.h>
-#include "node.h"
+//#include "node.h"
 
 #define DEFAULT_PKTSIZE	sizeof(Packet)
 
@@ -22,11 +22,16 @@ struct Packet {
 	//Payload
 	char payload_[128];
 	
+	static int ids;
+	int id_;
+	
 	Packet() {
+		id_ = ids++;
 		sourceId_ = destId_ = 0;
 		strcpy(payload_, "");
 	}
 	Packet(int s, int d, const char *payload) {
+		id_ = ids++;
 		sourceId_ = s;
 		destId_ = d;
 		strcpy(payload_, payload);

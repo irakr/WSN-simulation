@@ -90,7 +90,7 @@ int Node :: dequeuePkt() {
 //Deque packet and send to node 'n'
 int Node :: send(Node *n) {
 	
-	if(pktQueue_.size() == 0) {
+	if(pktQueue_.empty()) {
 		fprintf(stderr, "[ERROR]: Packet queue is empty. Cannot send.\n");
 		return -1;
 	}
@@ -101,6 +101,7 @@ int Node :: send(Node *n) {
 	Packet *p1 = new Packet(pktQueue_.front()); //Backup before dequeueing it
 	dequeuePkt();
 	p1->destId_ = n->id_;
+	p1->forwarderId_ = id_;
 	n->recv(p1);
 	
 	Energy::spend(this, TX);	//energy consumption by transmitter
@@ -108,8 +109,9 @@ int Node :: send(Node *n) {
 	return 0;
 }
 
-// Send the packet p to the node n
+// Send the packet p to the node n without queueing
 int Node :: send(Node *n, Packet *p) {
+	p->forwarderId_ = id_;
 	n->recv(p);
 	Energy::spend(this, TX); //energy consumption by transmitter
 	return 0;
@@ -125,13 +127,13 @@ int Node :: broadcast(Packet *p) {
 
 // Recieve and enqueue packet
 int Node :: recv(Packet *p) {
-	if(enqueuePkt(p) == -1) {
+	if(enqueuePkt(p) == -1) {	//Queue full
 		// Drop packet
 		delete p;
 		return -1;
 	}
-	Packet& p1 = pktQueue_.front();
-	printf("[PACKET_RECIEVED]: s=%d d=%d payload='%s'\n", p1.sourceId_, p1.destId_, p1.payload_); 
+	Packet& p1 = pktQueue_.back();
+	printf("[PACKET_RECIEVED]: s=%d d=%d f=%d payload='%s'\n", p1.sourceId_, p1.destId_, p1.forwarderId_, p1.payload_); 
 	
 	Energy::spend(this, RX); //energy consumption by receiver
 	
@@ -286,7 +288,10 @@ int Node :: reachedThreshold() {
 		
 }
 
-// XXX... This is a protocol specific procedure. It may need changes often.
+/* XXX
+ * - This is a protocol specific procedure. It may need changes often.
+ * - Mind that this code might be crashable if nodes die and are deleted causing their pointers to be NULL.
+ */
 // Select a next-hop node from chTable_ or achTable_
 void Node :: selectNextHop() {
 	CTableEntry** ptr = chTable_->entry_;	// Entries are already sorted in increasing distance_to_BS_ order

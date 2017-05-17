@@ -10,6 +10,18 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+
+// Trace data format
+struct TraceFormat {
+	char eventType_;
+	double time_;
+	int fromNode_;	//node ids
+	int toNode_;
+	char pktType[16];
+	int pktSize_;
+	
+};
+
 class Trace {
 public:
 	Trace() {}
@@ -27,6 +39,8 @@ public:
 	}
 	static Trace& instance() { return *instance_; }
 	FILE* traceFile() { return traceFile_; }
+	
+	void trace(TraceFormat*); // Write the trace data to the tracefile
 private:
 	FILE *traceFile_;
 	static Trace* instance_;

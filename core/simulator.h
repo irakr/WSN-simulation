@@ -69,12 +69,16 @@ public:
 	Event* lookup(int uid);	// look for event
 	Event* deque();		// next event (removes from q)
 	
-	inline double clock() const {			// simulator virtual time
+	inline double clock() const {			// Event start time
 		return (clock_);
 	}
 	
 	inline double pseudoStartTime() {		// start time
 		return pseudoStartTime_;
+	}
+	
+	inline double pseudoCurrentTime() {
+		return ((double) ::clock()/CLOCKS_PER_SEC - pseudoStartTime());
 	}
 	
 	void reset();
@@ -102,13 +106,13 @@ private:
 	
 	// Scheduling properties
 	Event *eventList_, *tail_;
-	double clock_; // Current simulation time
+	double clock_; // Event start time
+	// This is discrete. For getting the exact continuous time use the 'pseudoCurrentTime_' variable and related.
 	
 	// This is the time taken as a start point when the program actually reaches the run() method so that
 	// the time duration occupied by the initialization processes are neglected.
 	// The overall simulation time will offset with reference to this time, which means this time is actually = 0(pseudo)
 	double pseudoStartTime_;
-#define PSEUDO_CURRENT_TIME	((double) ::clock()/CLOCKS_PER_SEC - pseudoStartTime())
 
 	clock_t systemClock_;	// Process's clock time
 	int halted_;

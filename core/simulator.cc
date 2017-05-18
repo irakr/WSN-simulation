@@ -226,7 +226,7 @@ Event* Simulator :: deque() {
 void Simulator :: dispatch(Event *e) {
 	//clock_ = e->time_;
 	// TODO... run a new thread here
-	printf("Pseudo system time : %lf\n", (PSEUDO_CURRENT_TIME));
+	printf("Pseudo system time : %lf\n", (pseudoCurrentTime()));
 	printf("Simulator time : %lf\n", clock());
 	fflush(stdout);
 	e->handler_->handle(e);
@@ -243,14 +243,16 @@ void Simulator :: run() {
 	pthread_t tid;
 	pseudoStartTime_ = (double)::clock()/CLOCKS_PER_SEC;
 	printf("Pseudo start time = %lf\n", pseudoStartTime_);
+	Trace::instance().traceDump("Starting");
 	while((e=deque())) {
-		while((clock_ = (PSEUDO_CURRENT_TIME)) < e->time_);
-		pthread_create(&tid, NULL, &threadify, (void*)e);
-		pthread_join(tid, (void**)0);
+		while((clock_ = (pseudoCurrentTime())) < e->time_);
+		pthread_create(&tid, NULL, &threadify, (void*)e);	// Run each event parallely.
 		
-		//dispatch(e);
+		/* This code is used if you want to run the events sequentially.
+		 * dispatch(e);
+		 */
 	}
-	
+	pthread_join(tid, (void**)0); //XXX...Probably better if it waits for all threads.
 }
 
 void* threadify(void *p) {

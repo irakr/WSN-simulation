@@ -9,17 +9,17 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-
+#include "net.h"
 
 // Trace data format
 struct TraceFormat {
 	char eventType_;
 	double time_;
-	int fromNode_;	//node ids
+	int fromNode_;	// Node ids
 	int toNode_;
-	char pktType[16];
-	int pktSize_;
-	
+	char pktType_[16];
+	unsigned short pktSize_;
+	unsigned int pktId_; // Unique id of pkt
 };
 
 class Trace {
@@ -40,7 +40,9 @@ public:
 	static Trace& instance() { return *instance_; }
 	FILE* traceFile() { return traceFile_; }
 	
-	void trace(TraceFormat*); // Write the trace data to the tracefile
+	void traceDump(TraceFormat*); // Write the trace data from the traceformat argument to the tracefile
+	void traceDump(const char*); // Write the trace data in the argument to the tracefile directly
+	void format(const char event, const double time, const Packet *pkt);
 private:
 	FILE *traceFile_;
 	static Trace* instance_;

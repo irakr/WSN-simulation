@@ -75,6 +75,11 @@ int Node :: enqueuePkt(Packet *p) {
 		return -1;
 	}
 	pktQueue_.push_back(*p);
+	
+	// Tracing
+	Simulator& s = Simulator::instance();
+	Trace::instance().format('+', s.clock(), p);
+	
 	return 0;
 }
 
@@ -82,8 +87,15 @@ int Node :: dequeuePkt() {
 	if(pktQueue_.size() == 0) {
 		fprintf(stderr, "[ERROR]: Packet queue is empty. Cannot deque.\n");
 		return -1;
-	} 
+	}
+	Packet *p = new Packet(pktQueue_.front());
 	pktQueue_.erase(pktQueue_.begin());
+	
+	// Tracing
+	Simulator& s = Simulator::instance();
+	Trace::instance().format('-', s.clock(), p);
+	
+	delete p;	//Temporary one deleted
 	return 0;
 }
 
@@ -106,6 +118,11 @@ int Node :: send(Node *n) {
 	
 	Energy::spend(this, TX);	//energy consumption by transmitter
 	
+	// Tracing
+	Simulator& s = Simulator::instance();
+	Trace::instance().format('s', s.clock(), p1);
+	
+	delete p1;	//Temporary one deleted
 	return 0;
 }
 
@@ -114,6 +131,11 @@ int Node :: send(Node *n, Packet *p) {
 	p->forwarderId_ = id_;
 	n->recv(p);
 	Energy::spend(this, TX); //energy consumption by transmitter
+	
+	// Tracing
+	Simulator& s = Simulator::instance();
+	Trace::instance().format('s', s.clock(), p);
+	
 	return 0;
 }
 
@@ -137,21 +159,31 @@ int Node :: recv(Packet *p) {
 	
 	Energy::spend(this, RX); //energy consumption by receiver
 	
+	// Tracing
+	Simulator& s = Simulator::instance();
+	Trace::instance().format('r', s.clock(), p);
+	
 	return 0;
 }
 
 // Generate application data by a Non-CH sensor node
 void Node :: eventData(const char* data) {
 	// Store data and enqueue into packet queue
-	char s[256]="";
+	char str[256]="";
 	strcpy(eventData_, data);
-	sprintf(s, "%s [Node=%d, Cluster=%d]\n", data, id_, clusterId_);
-	Packet p(this->id_, clusterHead()->id_, s);
+	sprintf(str, "%s [Node=%d, Cluster=%d]\n", data, id_, clusterId_);
+	Packet p(this->id_, clusterHead()->id_, str, "sensor");
+	
 	if(enqueuePkt(&p) == -1) {
 		//XXX... Possibly wait for queue to be available
 		fprintf(stderr, "[ERROR]: Packet queue is full. Application data will be dropped or waiting.\n");
 	}
+	
 	Energy::spend(this, SENSOR);	//energy consumption by sensor
+	
+	// Tracing
+	Simulator& s = Simulator::instance();
+	Trace::instance().format('e', s.clock(), &p);
 }
 
 // TODO... Make similar function for 'achTable_'
@@ -278,13 +310,13 @@ int Node :: reachedThreshold() {
 	// XXX... Not tested yet
 	if(thresholdLevel > ENERGY_DIVISION+1) {
 		printf("[INFO]: Node(%d) is dead\n", id_);
-		return -2;
+		return -2;	//Node dead
 	}
 	if(energy_ <= thresholdEnergy_[thresholdLevel]) {
 		thresholdLevel++;
-		return 0;
+		return 0;	//Reached a threshold bound
 	}
-	return -1;
+	return -1;	//Not yet
 		
 }
 
@@ -319,12 +351,30 @@ void Node :: forwardData() {
 
 // Broadcast a relaxation packet. This packet is transmitted without being queued.
 int Node :: notifyRelax() {
-	RelaxPacket p;
+	RelaxPacket p(this->id_, clusterHead()->id_, "[Notify]: News for relaxation.", "relax");
 	p.sourceId_ = id_;
 	p.destId_ = BROADCAST_ADDRESS;
-	strcpy(p.payload_, "[Notify]: News for relaxtion.");
-	p.type_ = RELAXATION;
+	p.notifyType_ = RELAXATION;
 	p.currentEnergy_ = energy_;
+	
+	// Tracing
+	Simulator& s = Simulator::instance();
+	Trace::instance().format('n', s.clock(), &p);
+	
+	return broadcast(&p);
+}
+
+// Broadcast a activation packet. This packet is transmitted without being queued.
+int Node :: notifyActive() {
+	RelaxPacket p(this->id_, clusterHead()->id_, "[Notify]: News for activation.", "active");
+	p.sourceId_ = id_;
+	p.destId_ = BROADCAST_ADDRESS;
+	p.notifyType_ = ACTIVATION;
+	p.currentEnergy_ = energy_;
+	
+	// Tracing
+	Simulator& s = Simulator::instance();
+	Trace::instance().format('n', s.clock(), &p);
 	
 	return broadcast(&p);
 }

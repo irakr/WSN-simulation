@@ -5,6 +5,8 @@
 #include <stdlib.h>
 #include "simulator.h"
 
+void cleanUp();
+
 int main(int argc, char *argv[]) {
 	if(argc == 1) {
 		fprintf(stderr, "[ERROR]: Please provide a configuration file.\n");
@@ -21,5 +23,13 @@ int main(int argc, char *argv[]) {
 	simulator.init(argv[1]);
 	// Start simulation
 	simulator.run();
+	
+	//cleanUp();
+	
 	return 0;
+}
+
+void cleanUp() {
+	// Cleanup all remaining object like simulator, trace, etc...
+	
 }

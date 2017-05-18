@@ -77,6 +77,7 @@ public:
 	int recv(Packet*);	// Recieve and enqueu packet p
 	int broadcast(Packet*);	// Broadcast packet p
 	int notifyRelax();	// Broadcast a relaxation packet
+	int notifyActive();	// Broadcast a activation packet
 	
 private:
 	static int ids_;	//ID generated and ID count

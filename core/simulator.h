@@ -106,6 +106,8 @@ private:
 	
 	// Scheduling properties
 	Event *eventList_, *tail_;
+	unsigned int eventCount_;
+	
 	double clock_; // Event start time
 	// This is discrete. For getting the exact continuous time use the 'pseudoCurrentTime_' variable and related.
 	

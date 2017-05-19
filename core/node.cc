@@ -8,6 +8,10 @@
 #include "simulator.h"
 #include "energy.h"
 #include <math.h>
+#include <pthread.h>
+
+
+extern pthread_mutex_t pktQueue_mutex, threshold_mutex, recv_mutex, send_mutex, eventData_mutex;
 
 int Node :: ids_ = 0;	//ID generated and ID count
 const double Node :: maxEnergy_ = 1000;
@@ -19,6 +23,7 @@ Node :: Node(int nneighbor) {
 	nextHop_ = NULL;
 	queueLimit_ = DEFAULT_QUEUE_LIMIT;
 	pktSize_ = DEFAULT_PKTSIZE;
+	thresholdLevel_ = 1;
 	neighbours_ = new Node*[nneighbor];
 	//for(int i=0; i<nneighbor; i++)
 		//neighbours_[i] = NULL;
@@ -70,22 +75,30 @@ double Node :: distance(Node *n1, Node *n2) {
 }
 
 int Node :: enqueuePkt(Packet *p) {
+	pthread_mutex_lock(&pktQueue_mutex);
+	
 	if(pktQueue_.size() == queueLimit_) {
 		fprintf(stderr, "[ERROR]: Packet queue full. Dropping packet.\n");
+		pthread_mutex_unlock(&pktQueue_mutex);
 		return -1;
 	}
 	pktQueue_.push_back(*p);
 	
 	// Tracing
 	Simulator& s = Simulator::instance();
-	Trace::instance().format('+', s.clock(), p);
+	Trace::instance().format('+', s.pseudoCurrentTime(), p);
+	
+	pthread_mutex_unlock(&pktQueue_mutex);
 	
 	return 0;
 }
 
 int Node :: dequeuePkt() {
+	pthread_mutex_lock(&pktQueue_mutex);
+	
 	if(pktQueue_.size() == 0) {
 		fprintf(stderr, "[ERROR]: Packet queue is empty. Cannot deque.\n");
+		pthread_mutex_unlock(&pktQueue_mutex);
 		return -1;
 	}
 	Packet *p = new Packet(pktQueue_.front());
@@ -93,7 +106,9 @@ int Node :: dequeuePkt() {
 	
 	// Tracing
 	Simulator& s = Simulator::instance();
-	Trace::instance().format('-', s.clock(), p);
+	Trace::instance().format('-', s.pseudoCurrentTime(), p);
+	
+	pthread_mutex_unlock(&pktQueue_mutex);
 	
 	delete p;	//Temporary one deleted
 	return 0;
@@ -101,13 +116,16 @@ int Node :: dequeuePkt() {
 
 //Deque packet and send to node 'n'
 int Node :: send(Node *n) {
+	pthread_mutex_lock(&send_mutex);
 	
 	if(pktQueue_.empty()) {
 		fprintf(stderr, "[ERROR]: Packet queue is empty. Cannot send.\n");
+		pthread_mutex_unlock(&send_mutex);
 		return -1;
 	}
 	if(!n) {
 		fprintf(stderr, "[ERROR]: Recieving node is not defined. Cannot send.\n");
+		pthread_mutex_unlock(&send_mutex);
 		return -1;
 	}
 	Packet *p1 = new Packet(pktQueue_.front()); //Backup before dequeueing it
@@ -118,9 +136,11 @@ int Node :: send(Node *n) {
 	
 	Energy::spend(this, TX);	//energy consumption by transmitter
 	
-	// Tracing
+	/* Tracing
 	Simulator& s = Simulator::instance();
-	Trace::instance().format('s', s.clock(), p1);
+	Trace::instance().format('s', s.pseudoCurrentTime(), p1);
+	*/
+	pthread_mutex_unlock(&send_mutex);
 	
 	delete p1;	//Temporary one deleted
 	return 0;
@@ -128,13 +148,17 @@ int Node :: send(Node *n) {
 
 // Send the packet p to the node n without queueing
 int Node :: send(Node *n, Packet *p) {
+	pthread_mutex_lock(&send_mutex);
+	
 	p->forwarderId_ = id_;
 	n->recv(p);
 	Energy::spend(this, TX); //energy consumption by transmitter
 	
-	// Tracing
+	/* Tracing
 	Simulator& s = Simulator::instance();
-	Trace::instance().format('s', s.clock(), p);
+	Trace::instance().format('s', s.pseudoCurrentTime(), p);
+	*/
+	pthread_mutex_unlock(&send_mutex);
 	
 	return 0;
 }
@@ -149,9 +173,21 @@ int Node :: broadcast(Packet *p) {
 
 // Recieve and enqueue packet
 int Node :: recv(Packet *p) {
+	pthread_mutex_lock(&recv_mutex);
+	
+	// Tracing
+	Simulator& s = Simulator::instance();
+	Trace::instance().format('r', s.pseudoCurrentTime(), p);
+	
 	if(enqueuePkt(p) == -1) {	//Queue full
 		// Drop packet
+		
+		// Tracing
+		Simulator& s = Simulator::instance();
+		Trace::instance().format('d', s.pseudoCurrentTime(), p);
+	
 		delete p;
+		pthread_mutex_unlock(&recv_mutex);
 		return -1;
 	}
 	Packet& p1 = pktQueue_.back();
@@ -159,9 +195,7 @@ int Node :: recv(Packet *p) {
 	
 	Energy::spend(this, RX); //energy consumption by receiver
 	
-	// Tracing
-	Simulator& s = Simulator::instance();
-	Trace::instance().format('r', s.clock(), p);
+	pthread_mutex_unlock(&recv_mutex);
 	
 	return 0;
 }
@@ -170,9 +204,18 @@ int Node :: recv(Packet *p) {
 void Node :: eventData(const char* data) {
 	// Store data and enqueue into packet queue
 	char str[256]="";
+	
+	pthread_mutex_lock(&eventData_mutex);
+	
 	strcpy(eventData_, data);
 	sprintf(str, "%s [Node=%d, Cluster=%d]\n", data, id_, clusterId_);
 	Packet p(this->id_, clusterHead()->id_, str, "sensor");
+	
+	pthread_mutex_unlock(&eventData_mutex);
+	
+	// Tracing
+	Simulator& s = Simulator::instance();
+	Trace::instance().format('e', s.pseudoCurrentTime(), &p);
 	
 	if(enqueuePkt(&p) == -1) {
 		//XXX... Possibly wait for queue to be available
@@ -180,10 +223,6 @@ void Node :: eventData(const char* data) {
 	}
 	
 	Energy::spend(this, SENSOR);	//energy consumption by sensor
-	
-	// Tracing
-	Simulator& s = Simulator::instance();
-	Trace::instance().format('e', s.clock(), &p);
 }
 
 // TODO... Make similar function for 'achTable_'
@@ -303,19 +342,20 @@ void Node :: partitionEnergy() {
 
 // Check if energy level has reached a threshold
 int Node :: reachedThreshold() {
-	// Keeps track of currently in which partition the energy level of the node lies(Lower bound of a partition)
-	// If this value goes beyond (ENERGY_DIVISION+1), the battery is dead.
-	static int thresholdLevel = 1;
+	pthread_mutex_lock(&threshold_mutex);
 	
 	// XXX... Not tested yet
-	if(thresholdLevel > ENERGY_DIVISION+1) {
+	if(thresholdLevel_ > ENERGY_DIVISION+1) {
 		printf("[INFO]: Node(%d) is dead\n", id_);
 		return -2;	//Node dead
 	}
-	if(energy_ <= thresholdEnergy_[thresholdLevel]) {
-		thresholdLevel++;
+	if(energy_ <= thresholdEnergy_[thresholdLevel_]) {
+		thresholdLevel_++;
 		return 0;	//Reached a threshold bound
 	}
+	
+	pthread_mutex_unlock(&threshold_mutex);
+	
 	return -1;	//Not yet
 		
 }
@@ -341,6 +381,8 @@ void Node :: selectNextHop() {
 		fprintf(stderr, "[INFO]: Next hop could not be decided for node(%d)\n", id_);
 		return;
 	}
+	
+	// TODO... Search in ACH table if not found in CH table
 }
 
 // This calls selectNextHop() and forwards packet to it. Not called by 'NCH' nodes.
@@ -359,7 +401,7 @@ int Node :: notifyRelax() {
 	
 	// Tracing
 	Simulator& s = Simulator::instance();
-	Trace::instance().format('n', s.clock(), &p);
+	Trace::instance().format('n', s.pseudoCurrentTime(), &p);
 	
 	return broadcast(&p);
 }
@@ -374,7 +416,7 @@ int Node :: notifyActive() {
 	
 	// Tracing
 	Simulator& s = Simulator::instance();
-	Trace::instance().format('n', s.clock(), &p);
+	Trace::instance().format('n', s.pseudoCurrentTime(), &p);
 	
 	return broadcast(&p);
 }

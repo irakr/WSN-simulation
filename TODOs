@@ -12,12 +12,13 @@
 
 - Recursive routing function 															[Done]
 
-- Running simulation with multiple threads for a single event
-
-- Keeping track of simulationt time
+- Running simulation with multiple threads for a single event						[Incomplete; Require immediate attention]
+	> Mutexes are not working well and the program is now running unexpectedly.
+	
+- Keeping track of simulation time														[Done]
 
 - Energy consumption mechanism															[Partially Done]
 	> Energy spent per bit = Joules per bit	[Not done as per mentioned]
 	> Invoke relaxation packet transmission on threshold energy level [Done]
 	
-- Generating trace data
+- Generating trace data																	[Done]

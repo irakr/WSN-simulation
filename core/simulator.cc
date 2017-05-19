@@ -10,6 +10,9 @@
 #include <pthread.h>
 #include <string.h>
 
+
+extern pthread_mutex_t simulatorData_mutex;
+
 Simulator* Simulator :: instance_;
 int Event :: uids_ = 0;
 
@@ -20,6 +23,7 @@ Simulator :: Simulator() {
 	strcpy(proto, "");
 	eventList_ = NULL;
 	nclusters_ = 0;
+	eventCount_ = 0;
 	instance_ = this;
 }
 
@@ -209,6 +213,7 @@ void Simulator :: insert(Event *e) {
 		tail_ = ptr;
 	}
 	ptr->next_ = NULL;
+	eventCount_++;
 }
 
 // Remove/Dequeue event from the event list. Remove from head, i.e., left ended.
@@ -219,6 +224,7 @@ Event* Simulator :: deque() {
 	eventList_ = eventList_->next_;
 	if(eventList_)
 		eventList_->prev_ = NULL;
+	eventCount_--;
 	return ptr;
 }
 
@@ -226,8 +232,8 @@ Event* Simulator :: deque() {
 void Simulator :: dispatch(Event *e) {
 	//clock_ = e->time_;
 	// TODO... run a new thread here
-	printf("Pseudo system time : %lf\n", (pseudoCurrentTime()));
-	printf("Simulator time : %lf\n", clock());
+	printf("%80lf\n", (pseudoCurrentTime()));
+	//printf("Simulator time : %lf\n", clock());
 	fflush(stdout);
 	e->handler_->handle(e);
 	delete e;
@@ -240,23 +246,33 @@ void Simulator :: dispatch(Event *e) {
 //
 void Simulator :: run() {
 	Event *e;
-	pthread_t tid;
+	
+	int threadCount = eventCount_;
+	pthread_t *tid_list = new pthread_t[threadCount+1];
+	
 	pseudoStartTime_ = (double)::clock()/CLOCKS_PER_SEC;
 	printf("Pseudo start time = %lf\n", pseudoStartTime_);
-	Trace::instance().traceDump("Starting");
+	Trace::instance().traceDump("Starting Simulation...");
+	unsigned int i=0;
 	while((e=deque())) {
 		while((clock_ = (pseudoCurrentTime())) < e->time_);
-		pthread_create(&tid, NULL, &threadify, (void*)e);	// Run each event parallely.
-		
+		pthread_create(&tid_list[i], NULL, &threadify, (void*)e);	// Run each event parallely.
+		i++;
 		/* This code is used if you want to run the events sequentially.
 		 * dispatch(e);
 		 */
 	}
-	pthread_join(tid, (void**)0); //XXX...Probably better if it waits for all threads.
+	
+	for(i=0; i<=threadCount; i++)
+		pthread_join(tid_list[i], (void**)0);
+	printf("Events = %d, Threads = %d\n", eventCount_, threadCount);
+	fflush(stdout);
+	delete[] tid_list;
 }
 
 void* threadify(void *p) {
 	Event *e = (Event*)p;
 	Simulator::instance().dispatch(e);
+	pthread_exit((void*)0);
 	return (void*)0;
 }

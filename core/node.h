@@ -29,6 +29,7 @@ public:
 		nextHop_ = NULL;
 		queueLimit_ = DEFAULT_QUEUE_LIMIT;
 		pktSize_ = DEFAULT_PKTSIZE;
+		thresholdLevel_ = 1;
 	}
 	Node(int nneighbor);
 	
@@ -66,7 +67,6 @@ public:
 	int reachedThreshold(); // Check if energy level has reached a threshold
 	
 	// Perform routing logic
-	void routeLogic();
 	void selectNextHop();
 	void forwardData(); // This calls selectNextHop() and forwards packet to it.
 	
@@ -90,6 +90,9 @@ private:
 	double transmissionRange_;
 	std::vector<Packet> pktQueue_;
 	unsigned int queueLimit_;	//Max pktqueue size after which the packets will be dropped.
+	// Keeps track of currently in which partition the energy level of the node lies(Lower bound of a partition)
+	// If this value goes beyond (ENERGY_DIVISION+1), the battery is dead.
+	int thresholdLevel_;
 	
 	// Network layer properties
 	int id_;	//ID or address

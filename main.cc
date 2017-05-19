@@ -3,9 +3,22 @@
  */
 #include <stdio.h>
 #include <stdlib.h>
+#include <pthread.h>
 #include "simulator.h"
 
+pthread_mutex_t trace_mutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t energy_mutex = PTHREAD_MUTEX_INITIALIZER;
+//pthread_mutex_t nodeData_mutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t simulatorData_mutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t threshold_mutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t recv_mutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t send_mutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t eventData_mutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t pktQueue_mutex = PTHREAD_MUTEX_INITIALIZER;
+
 void cleanUp();
+
+static Simulator *simulator_ptr;
 
 int main(int argc, char *argv[]) {
 	if(argc == 1) {
@@ -18,7 +31,7 @@ int main(int argc, char *argv[]) {
 	}
 	
 	// Initialize simulation environment
-	(new Simulator());
+	simulator_ptr = new Simulator();
 	Simulator& simulator = Simulator :: instance();
 	simulator.init(argv[1]);
 	// Start simulation
@@ -30,6 +43,15 @@ int main(int argc, char *argv[]) {
 }
 
 void cleanUp() {
-	// Cleanup all remaining object like simulator, trace, etc...
+	// Cleanup all remaining object like simulator, trace, mutex_locks, etc...
 	
+	delete simulator_ptr;
+	pthread_mutex_destroy(&trace_mutex);
+	pthread_mutex_destroy(&energy_mutex);
+	pthread_mutex_destroy(&simulatorData_mutex);
+	pthread_mutex_destroy(&threshold_mutex);
+	pthread_mutex_destroy(&recv_mutex);
+	pthread_mutex_destroy(&send_mutex);
+	pthread_mutex_destroy(&eventData_mutex);
+	pthread_mutex_destroy(&pktQueue_mutex);
 }

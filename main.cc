@@ -16,6 +16,7 @@ pthread_mutex_t send_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t eventData_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t pktEnqueue_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t pktDequeue_mutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t forwardData_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 void cleanUp();
 
@@ -56,4 +57,5 @@ void cleanUp() {
 	pthread_mutex_destroy(&eventData_mutex);
 	pthread_mutex_destroy(&pktEnqueue_mutex);
 	pthread_mutex_destroy(&pktDequeue_mutex);
+	pthread_mutex_destroy(&forwardData_mutex);
 }

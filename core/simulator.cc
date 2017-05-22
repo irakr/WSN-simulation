@@ -24,6 +24,7 @@ Simulator :: Simulator() {
 	eventList_ = NULL;
 	nclusters_ = 0;
 	eventCount_ = 0;
+	relaxPeriodTime_ = DEFAULT_RELAXTIME;
 	instance_ = this;
 }
 
@@ -187,6 +188,9 @@ void Simulator :: init(char *config_file) {
 				nodes_[i]->energyDivisions_ = ed;
 				nodes_[i]->partitionEnergy();
 			}
+		}
+		else if(strcmp(temp, "RelaxTime") == 0) { // Relax time
+			relaxPeriodTime_ = atof(strtok(NULL, ":"));
 		}
 		else {
 			// Unknown configuration

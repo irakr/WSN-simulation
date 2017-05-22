@@ -30,9 +30,10 @@ void Energy :: spend(Node *n, Packet *p, EnergyConsumption_t type) {
 	
 	// Check for threshold
 	if(n->nodeType() != BS) {
-		if(n->reachedThreshold() == 0)
+		int ret = n->reachedThreshold();
+		if(ret == 0)
 			n->notifyRelax();
-		else if(n->reachedThreshold() == -2)	//Energy over
+		else if(ret == -2)	//Energy over
 			Simulator::instance().killNode(n);
 	}
 }

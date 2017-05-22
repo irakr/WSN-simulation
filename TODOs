@@ -11,7 +11,8 @@
 - Relaxation packet mechanism 															[Incomplete]
 	> The relaxation packet is a high priority packet and so it must be successfully received by
 	  all the neighbours.
-	> Be in sleep mode.
+	> Be in sleep mode. [Use a new thread to wait for the specified duration and then rebroadcast
+						 an ACTIVATION packet and exit]
 	> After a certain time period wake up and rebroadcast an 'activation' packet.
 
 - Recursive routing function 															[Done]

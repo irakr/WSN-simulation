@@ -10,6 +10,7 @@
 
 #define SOME_SENSOR_DATA	"[EVENT_DATA]: Some event occured!"
 
+
 void SenseEventHandler :: handle(Event *e) {
 	// Execute following internal events like- data fowarding to CH, data-aggregation by CH, etc., to the event list
 	//TODO...
@@ -21,15 +22,12 @@ void SenseEventHandler :: handle(Event *e) {
 	Node *n = sim.node(((SenseEvent*)e)->atNode_);
 	n->eventData(SOME_SENSOR_DATA);
 	
-	// Forward sensed data to its CH TODO
+	// Forward sensed data to its CH
 	n->send(n->clusterHead());
 	
 	// Let CH forward data to its next hop
-	routeToBs(n->clusterHead());	//TODO... instead use routeToBs()
-	
-	// Produce trace data TODO
-	
-	// Call event handler of the receiving node TODO
+	if(routeToBs(n->clusterHead()) == -1)
+		fprintf(stderr, "[INFO]: Node(%d) failed to route data to BS\n", n->id());
 	
 }
 
@@ -40,6 +38,8 @@ int SenseEventHandler :: routeToBs(Node *startNode) {
 		fflush(stdout);
 		return 0;
 	}
-	startNode->forwardData();
+	if(startNode->forwardData() == -1) {
+		return -1;
+	}
 	return routeToBs(startNode->nextHop());
 }

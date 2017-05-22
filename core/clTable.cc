@@ -41,8 +41,10 @@ CTableEntry* CTable :: maxEnergyEntry() {
 	CTableEntry** ptr = entry_;
 	CTableEntry* maxEnergyNodeEntry = ptr[0];
 	for(int i=1; i < entryCounter_; i++) {
-		if(ptr[i]->node_->energy() > maxEnergyNodeEntry->node_->energy())
-			maxEnergyNodeEntry = ptr[i];
+		if(ptr[i]->node_->state() == ACTIVE_MODE) {
+			if(ptr[i]->node_->energy() > maxEnergyNodeEntry->node_->energy())
+				maxEnergyNodeEntry = ptr[i];
+		}
 	}
 	return maxEnergyNodeEntry;
 }

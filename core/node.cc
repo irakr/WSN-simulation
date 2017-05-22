@@ -11,7 +11,8 @@
 #include <pthread.h>
 
 
-extern pthread_mutex_t pktEnqueue_mutex, pktDequeue_mutex, threshold_mutex, recv_mutex, send_mutex, eventData_mutex;
+extern pthread_mutex_t pktEnqueue_mutex, pktDequeue_mutex, 		\
+		threshold_mutex, recv_mutex, send_mutex, eventData_mutex, forwardData_mutex;
 
 int Node :: ids_ = 0;	//ID generated and ID count
 const double Node :: maxEnergy_ = 1000;
@@ -33,6 +34,7 @@ Node :: Node(int nneighbor) {
 	energyDivisions_ = DEFAULT_ENERGY_DIVISION;
 	thresholdEnergy_ = NULL;
 	partitionEnergy();
+	state_ = ACTIVE_MODE;
 }
 	
 // Add a neighbour to the neighbour list(Bi-directional, self-directional)
@@ -148,13 +150,10 @@ int Node :: send(Node *n) {
 	
 	//@@@ Alternative solution provided by the system is nanosleep()
 	
-	n->recv(p);
+	n->recv(p); // The receiving node forward this packet atleast even if it has reached its threshold energy.
 	
 	Energy::spend(this, p, TX);	//energy consumption by transmitter
 	
-	/*XXX Tracing
-	Trace::instance().format('s', s.pseudoCurrentTime(), p1);
-	*/
 	//pthread_mutex_unlock(&send_mutex);
 	
 	delete p;	//Temporary one deleted
@@ -246,8 +245,8 @@ int Node :: recv(Packet *p) {
 	Simulator& s = Simulator::instance();
 	Trace::instance().format('r', s.pseudoCurrentTime(), p);
 	
-	Packet& p1 = pktQueue_.back();
-	printf("[PACKET_RECIEVED]: s=%d d=%d f=%d payload='%s'\n", p1.sourceId_, p1.destId_, p1.forwarderId_, p1.payload_); 
+	//Packet& p1 = pktQueue_.back();
+	printf("[PACKET_RECIEVED]: s=%d d=%d f=%d payload='%s'\n", p->sourceId_, p->destId_, p->forwarderId_, p->payload_); 
 	
 	//pthread_mutex_unlock(&recv_mutex);
 	
@@ -272,9 +271,16 @@ int Node :: recvHighPriority(Packet *p) {
 }
 
 // This calls selectNextHop() and forwards packet to it. Not called by 'NCH' nodes.
-void Node :: forwardData() {
-	selectNextHop();
-	send(nextHop_);
+int Node :: forwardData() {
+	//@pthread_mutex_lock(&forwardData_mutex);
+	if(selectNextHop() == -1) {
+		fprintf(stderr, "[INFO]: Next hop could not be decided for node(%d)\n", id_);
+		//@pthread_mutex_unlock(&forwardData_mutex);
+		return -1; // No route
+	}
+	send(nextHop_); //Packet may or may not drop. It is not dealt here.
+	//@pthread_mutex_unlock(&forwardData_mutex);
+	return 0;
 }
 
 // Generate application data by a Non-CH sensor node
@@ -452,35 +458,54 @@ int Node :: reachedThreshold() {
  * - Mind that this code might be crashable if nodes die and are deleted causing their pointers to be NULL.
  */
 // Select a next-hop node from chTable_ or achTable_
-void Node :: selectNextHop() {
+int Node :: selectNextHop() {
 	CTableEntry** ptr = chTable_->entry_;	// Entries are already sorted in increasing distance_to_BS_ order
 	CTableEntry* maxEnergy = chTable_->maxEnergyEntry();
 	Simulator& sim = Simulator::instance();
 	while(*ptr != (CTableEntry*)0) {
 		// difference between 'highest_energy' and 'energy_of_currently_selected_node' is compared against 'energyGapThreshold'
-		//if(ptr[0][0].node_->state() == ACTIVE_MODE) {
+		if(ptr[0][0].node_->state() == ACTIVE_MODE) {
 			if(abs(maxEnergy->node_->energy() - ptr[0][0].node_->energy()) < sim.energyGapThreshold()) {
 				nextHop_ = ptr[0][0].node_;
-				break;
+				return 0;
 			}
-		//}
-		//else {
-			//fprintf(stdout, "[INFO]: Node(%d) is in either SLEEP_MODE or DEAD_MODE. Skipping!\n", ptr[0]->node_->id());
-			
-		//}
+		}
+		//@else {
+			//@fprintf(stdout, "[INFO]: Node(%d) is in either SLEEP_MODE or DEAD_MODE. Skipping!\n", ptr[0]->node_->id());
+			//@fflush(stdout);
+		//@}
 		ptr++;
 	}
 	if(*ptr == (CTableEntry*)0) {
-		fprintf(stderr, "[INFO]: Next hop could not be decided for node(%d)\n", id_);
-		return;
+		fprintf(stderr, "[INFO]: Next hop could not be decided for node(%d) in CH Table. Trying in ACH table.\n", id_);
+		fflush(stderr);
 	}
 	
 	// TODO... Search in ACH table if not found in CH table
+	ptr = achTable_->entry_;	// Entries are already sorted in increasing distance_to_BS_ order
+	maxEnergy = achTable_->maxEnergyEntry();
+	while(*ptr != (CTableEntry*)0) {
+		// difference between 'highest_energy' and 'energy_of_currently_selected_node' is compared against 'energyGapThreshold'
+		if(ptr[0][0].node_->state() == ACTIVE_MODE) {
+			if(abs(maxEnergy->node_->energy() - ptr[0][0].node_->energy()) < sim.energyGapThreshold()) {
+				nextHop_ = ptr[0][0].node_;
+				return 0;
+			}
+		}
+		//@else {
+			//@fprintf(stdout, "[INFO]: Node(%d) is in either SLEEP_MODE or DEAD_MODE. Skipping!\n", ptr[0]->node_->id());
+			//@fflush(stdout);
+		//@}
+		ptr++;
+	}
+	if(*ptr == (CTableEntry*)0) {
+		return -1;
+	}
 }
 
 // Broadcast a relaxation packet. This packet is transmitted without being queued.
 int Node :: notifyRelax() {
-	if(nodeType_ == BS)
+	if(state_ == SLEEP_MODE)
 		return -1;
 	
 	RelaxPacket p(this->id_, BROADCAST_ADDRESS, "[Notify]: News for relaxation.", "relax");
@@ -496,15 +521,22 @@ int Node :: notifyRelax() {
 	
 	broadcast(&p);
 	
-	//TODO...Change state to SLEEP
+	// Change state to SLEEP
 	state_ = SLEEP_MODE;
+	
+	// TODO...Create a new thread and let it sleep. After the duration of sleep invoke 'notifyActive()' and exit.
+	sleepArg *arg = new sleepArg;
+	arg->duration_ = s.relaxPeriodTime_;
+	arg->node_ = this;
+	pthread_t tid;
+	pthread_create(&tid, NULL, &sleepPeriod, (void*)arg);
 	
 	return 0;
 }
 
 // Broadcast a activation packet. This packet is transmitted without being queued.
 int Node :: notifyActive() {
-	if(nodeType_ == BS)
+	if(state_ == ACTIVE_MODE)
 		return -1;
 	
 	RelaxPacket p(this->id_, BROADCAST_ADDRESS, "[Notify]: News for activation.", "active");
@@ -523,4 +555,12 @@ int Node :: notifyActive() {
 	state_ = ACTIVE_MODE;
 	
 	return 0;
+}
+
+// Sleep for 'duration' and wake up as ACTIVE
+void* Node :: sleepPeriod(void* arg) {
+	sleepArg *ptr = (sleepArg*)arg;
+	Simulator::instance().delay(ptr->duration_);
+	ptr->node_->notifyActive();
+	return (void*)0;
 }

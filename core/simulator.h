@@ -44,6 +44,7 @@ class Handler {
 
 /* start time (secs) */
 #define	SCHED_START	0.0
+#define DEFAULT_RELAXTIME 1.0
 
 // This is the overall simulation environment
 class Simulator {
@@ -99,6 +100,8 @@ public:
 	
 	int eventCount() { return eventCount_; }
 	int totalEvents() { return totalEvents_; }
+	
+	double relaxPeriodTime_;
 	
 private:
 	FILE *configFile_; //Input config file

@@ -21,6 +21,14 @@ typedef enum{CH, ACH, NCH, BS} NodeType_t;
 // Node state
 typedef enum{ACTIVE_MODE, SLEEP_MODE, DEAD_MODE} NodeState_t;
 
+class Node;
+
+// Argument to be passed to thread function sleepPeriod()
+struct sleepArg {
+	Node* node_;
+	double duration_;
+};
+
 struct CTable; //Forward declaration of 'CTable' from 'clTable.h' include below
 
 // Represents a wireless sensor node
@@ -37,6 +45,7 @@ public:
 		energyDivisions_ = DEFAULT_ENERGY_DIVISION;
 		thresholdEnergy_ = NULL;
 		partitionEnergy();
+		state_ = ACTIVE_MODE;
 	}
 	Node(int nneighbor);
 	
@@ -81,8 +90,8 @@ public:
 	int reachedThreshold(); // Check if energy level has reached a threshold
 	
 	// Perform routing logic
-	void selectNextHop();
-	void forwardData(); // This calls selectNextHop() and forwards packet to it.
+	int selectNextHop();
+	int forwardData(); // This calls selectNextHop() and forwards packet to it.
 	
 	int enqueuePkt(Packet*);
 	int dequeuePkt();
@@ -94,6 +103,7 @@ public:
 	int broadcast(Packet*);	// Broadcast packet p
 	int notifyRelax();	// Broadcast a relaxation packet
 	int notifyActive();	// Broadcast a activation packet
+	static void* sleepPeriod(void*); //A thread function to let a node be in SLEEP_MODE and then back to ACTIVE_MODE
 	
 	int energyDivisions_; //No of energy partitions to be made
 	
@@ -123,6 +133,7 @@ private:
 	//int pktSize_;
 	Node *assistantCH_;	// ACH node of a CH node. This remains NULL for NCH and ACH type nodes
 	NodeState_t state_;
+	double sleepDuration_; // Duration of RELAX period
 	
 	// Application layer properties
 	char eventData_[128];	// Some data collected during detection of an event

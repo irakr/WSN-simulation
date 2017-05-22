@@ -68,7 +68,7 @@ void Simulator :: init(char *config_file) {
 				temp = strtok(line, ":");
 				//printf("[Node %d]: ", atoi(temp));
 				
-				//Coordinates...Process still pending
+				//Coordinates...Partial work is done below somewhere
 				char coord[64]="";
 				temp = strtok(NULL, ":");
 				strcpy(coord, temp);
@@ -76,6 +76,10 @@ void Simulator :: init(char *config_file) {
 				//Transmission Range value
 				temp = strtok(NULL, ":");
 				nodes_[i]->transmissionRange(atof(temp));
+				
+				//Bandwidth
+				temp = strtok(NULL, ":");
+				nodes_[i]->bandwidth(atof(temp));
 				
 				// Energy level
 				temp = strtok(NULL, ":");
@@ -124,7 +128,7 @@ void Simulator :: init(char *config_file) {
 				*/
 				
 				
-				//TODO...Anymore attribute then add here
+				//TODO...Anymore attribute then add here(or sometimes somewhere above)
 				
 				//Extract coordinates
 				int x = atoi(strtok(coord, ","));
@@ -172,6 +176,18 @@ void Simulator :: init(char *config_file) {
 			energyGapThreshold_ = (atof(strtok(NULL, "=")) / 100.0) * Node::maxEnergy();
 			printf("energyGapThreshold = %lf\n", energyGapThreshold_);
 		}
+		else if(strcmp(temp, "PacketQueueSize") == 0) {	// Default packet queue size
+			unsigned int queueSize = atoi(strtok(NULL, "="));
+			for(int i=0; i<nnodes_; i++)
+				nodes_[i]->queueLimit(queueSize);
+		}
+		else if(strcmp(temp, "EnergyDivisions") == 0) {	// Energy divisions
+			int ed = atoi(strtok(NULL, "="));
+			for(int i=0; i<nnodes_; i++) {
+				nodes_[i]->energyDivisions_ = ed;
+				nodes_[i]->partitionEnergy();
+			}
+		}
 		else {
 			// Unknown configuration
 			fprintf(stderr, "[WARNING]: Unknown configuration attribute : '%s'\n", temp);
@@ -188,11 +204,6 @@ void Simulator :: createTopology() {
 		}
 	}
 	printf("[INFO]: Network Topology created\n");
-}
-
-// Remove node from the network
-void Simulator :: killNode(Node *n) {
-	printf("Node(%d) removed from the network.\n", n->id());
 }
 
 // Insert/Enqueue event to the event list. Insert to tail, i.e, right ended.
@@ -214,6 +225,7 @@ void Simulator :: insert(Event *e) {
 	}
 	ptr->next_ = NULL;
 	eventCount_++;
+	totalEvents_++;
 }
 
 // Remove/Dequeue event from the event list. Remove from head, i.e., left ended.
@@ -239,6 +251,11 @@ void Simulator :: dispatch(Event *e) {
 	delete e;
 }
 
+// Remove node from the network
+void Simulator :: killNode(Node *n) {
+	n->state(DEAD_MODE);
+}
+
 //
 //
 //	Run simulator
@@ -252,10 +269,11 @@ void Simulator :: run() {
 	
 	pseudoStartTime_ = (double)::clock()/CLOCKS_PER_SEC;
 	printf("Pseudo start time = %lf\n", pseudoStartTime_);
-	Trace::instance().traceDump("Starting Simulation...");
+	
 	unsigned int i=0;
 	while((e=deque())) {
 		while((clock_ = (pseudoCurrentTime())) < e->time_);
+		printf("(%d)", i);
 		pthread_create(&tid_list[i], NULL, &threadify, (void*)e);	// Run each event parallely.
 		i++;
 		/* This code is used if you want to run the events sequentially.
@@ -263,9 +281,10 @@ void Simulator :: run() {
 		 */
 	}
 	
-	for(i=0; i<=threadCount; i++)
+	for(i=0; i<threadCount; i++)
 		pthread_join(tid_list[i], (void**)0);
-	printf("Events = %d, Threads = %d\n", eventCount_, threadCount);
+	
+	printf("Events left = %d, Threads executed = %d\n", eventCount_, threadCount);
 	fflush(stdout);
 	delete[] tid_list;
 }
@@ -273,6 +292,7 @@ void Simulator :: run() {
 void* threadify(void *p) {
 	Event *e = (Event*)p;
 	Simulator::instance().dispatch(e);
+	//printf("Exiting thread %lu\n", pthread_self());
 	pthread_exit((void*)0);
 	return (void*)0;
 }

@@ -1,5 +1,5 @@
 /*
- * phy_mac.h
+ * mac.h
  *
  * Implementation of the physical and MAC layer.
  */
@@ -12,9 +12,9 @@ typedef struct {
 	int x, y, z;
 } Coordinate;
 
-class MACLayer {
+class MAC {
 public:
-	MACLayer() {}
-	
+	MAC() {	}
+	static double propagationSpeed_;
 };
 #endif

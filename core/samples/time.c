@@ -1,13 +1,14 @@
 #include <stdio.h>
+#include <string.h>
 #include <time.h>
 #include <unistd.h>
 
 int main() {
  clock_t start, end;
  double cpu_time_used;
-
+ char str[128]="";
  start = clock();
- for(int i=0; i<92888900; i++);
+ strcpy(str, "a");
  //printf("a\n");
  //sleep(1);
  end = clock();

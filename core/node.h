@@ -12,10 +12,14 @@
 #include "net.h"
 #include "mac.h"
 
-#define DEFAULT_QUEUE_LIMIT 512
+#define DEFAULT_QUEUE_LIMIT 100
+#define DEFAULT_ENERGY_DIVISION	5
 
 // Node type
 typedef enum{CH, ACH, NCH, BS} NodeType_t;
+
+// Node state
+typedef enum{ACTIVE_MODE, SLEEP_MODE, DEAD_MODE} NodeState_t;
 
 struct CTable; //Forward declaration of 'CTable' from 'clTable.h' include below
 
@@ -28,8 +32,11 @@ public:
 		location_.x = location_.y = location_.z = 0;
 		nextHop_ = NULL;
 		queueLimit_ = DEFAULT_QUEUE_LIMIT;
-		pktSize_ = DEFAULT_PKTSIZE;
-		thresholdLevel_ = 1;
+		//pktSize_ = PKTHDR_SIZE;
+		thresholdLevel_ = 1; //Initial threshold partition number
+		energyDivisions_ = DEFAULT_ENERGY_DIVISION;
+		thresholdEnergy_ = NULL;
+		partitionEnergy();
 	}
 	Node(int nneighbor);
 	
@@ -38,8 +45,13 @@ public:
 	static double maxEnergy() { return maxEnergy_; }
 	double energy() { return energy_; }
 	void energy(double val) { energy_ = val; }
+	double* thresholdEnergy() { return thresholdEnergy_; }
 	double transmissionRange() { return transmissionRange_; }
 	void transmissionRange(double val) { transmissionRange_ = val; }
+	void bandwidth(double bw) { bandwidth_ = bw; }
+	double bandwidth() { return bandwidth_; }
+	void queueLimit(unsigned int val) { queueLimit_ = val; }
+	unsigned int queueLimit() { return queueLimit_; }
 	Coordinate location() { return location_; }
 	void location(int x, int y, int z) { location_.x = x; location_.y = y; location_.z = z; }
 	void eventData(const char* data);
@@ -49,6 +61,8 @@ public:
 	NodeType_t nodeType() { return nodeType_; }
 	int cluster() { return clusterId_; }
 	void cluster(int cl) { clusterId_ = cl; }
+	NodeState_t state() { return state_; }
+	void state(NodeState_t st) { state_ = st; }
 	
 	// Functions ...
 	
@@ -74,10 +88,14 @@ public:
 	int dequeuePkt();
 	int send(Node*);	// Send the first packet from the queue to node
 	int send(Node*, Packet*);	// Send the packet p to the node n(for special purposes)
+	int sendHighPriority(Node*, Packet*); // Send the packet p to the node n without queueing and constant bandwidth delay
 	int recv(Packet*);	// Recieve and enqueu packet p
+	int recvHighPriority(Packet*);
 	int broadcast(Packet*);	// Broadcast packet p
 	int notifyRelax();	// Broadcast a relaxation packet
 	int notifyActive();	// Broadcast a activation packet
+	
+	int energyDivisions_; //No of energy partitions to be made
 	
 private:
 	static int ids_;	//ID generated and ID count
@@ -85,14 +103,14 @@ private:
 	
 	// MAC layer properties
 	Coordinate location_;
-#define ENERGY_DIVISION	5
-	double energy_, thresholdEnergy_[ENERGY_DIVISION+1];
+	double energy_, *thresholdEnergy_;
 	double transmissionRange_;
 	std::vector<Packet> pktQueue_;
 	unsigned int queueLimit_;	//Max pktqueue size after which the packets will be dropped.
 	// Keeps track of currently in which partition the energy level of the node lies(Lower bound of a partition)
 	// If this value goes beyond (ENERGY_DIVISION+1), the battery is dead.
 	int thresholdLevel_;
+	double bandwidth_;	// Bandwidth provided by the channel
 	
 	// Network layer properties
 	int id_;	//ID or address
@@ -102,8 +120,9 @@ private:
 	Node **neighbours_; //List of neighbour nodes
 	int nneighbours_;	// No of neighbours
 	CTable *chTable_, *achTable_; //The tabl {M} as represented in the protocol
-	int pktSize_;
+	//int pktSize_;
 	Node *assistantCH_;	// ACH node of a CH node. This remains NULL for NCH and ACH type nodes
+	NodeState_t state_;
 	
 	// Application layer properties
 	char eventData_[128];	// Some data collected during detection of an event

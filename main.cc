@@ -14,7 +14,8 @@ pthread_mutex_t threshold_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t recv_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t send_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t eventData_mutex = PTHREAD_MUTEX_INITIALIZER;
-pthread_mutex_t pktQueue_mutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t pktEnqueue_mutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t pktDequeue_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 void cleanUp();
 
@@ -37,7 +38,7 @@ int main(int argc, char *argv[]) {
 	// Start simulation
 	simulator.run();
 	
-	//cleanUp();
+	cleanUp();
 	
 	return 0;
 }
@@ -53,5 +54,6 @@ void cleanUp() {
 	pthread_mutex_destroy(&recv_mutex);
 	pthread_mutex_destroy(&send_mutex);
 	pthread_mutex_destroy(&eventData_mutex);
-	pthread_mutex_destroy(&pktQueue_mutex);
+	pthread_mutex_destroy(&pktEnqueue_mutex);
+	pthread_mutex_destroy(&pktDequeue_mutex);
 }

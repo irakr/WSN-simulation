@@ -12,12 +12,13 @@
 typedef enum{TX, RX, SENSOR, COMPUTE} EnergyConsumption_t;
 class Energy {
 public:
-	static void spend(Node*, EnergyConsumption_t);
+	static void spend(Node*, Packet*, EnergyConsumption_t);
 private:
 	// XXX... Currently these values are per operation rather than per bit.
 	static const double energyPerBitTx;
 	static const double energyPerBitRx;
 	static const double energyPerBitSensor;
+	static const double energyIdle;
 };
 
 #endif

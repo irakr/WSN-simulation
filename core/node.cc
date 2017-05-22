@@ -11,7 +11,7 @@
 #include <pthread.h>
 
 
-extern pthread_mutex_t pktQueue_mutex, threshold_mutex, recv_mutex, send_mutex, eventData_mutex;
+extern pthread_mutex_t pktEnqueue_mutex, pktDequeue_mutex, threshold_mutex, recv_mutex, send_mutex, eventData_mutex;
 
 int Node :: ids_ = 0;	//ID generated and ID count
 const double Node :: maxEnergy_ = 1000;
@@ -22,14 +22,16 @@ Node :: Node(int nneighbor) {
 	location_.x = location_.y = location_.z = 0;
 	nextHop_ = NULL;
 	queueLimit_ = DEFAULT_QUEUE_LIMIT;
-	pktSize_ = DEFAULT_PKTSIZE;
-	thresholdLevel_ = 1;
+	//pktSize_ = PKTHDR_SIZE;
 	neighbours_ = new Node*[nneighbor];
 	//for(int i=0; i<nneighbor; i++)
 		//neighbours_[i] = NULL;
 	nneighbours_ = nneighbor;
 	chTable_ = new CTable(nneighbours_);
 	achTable_ = new CTable(nneighbours_);
+	thresholdLevel_ = 1; //Initial threshold partition number
+	energyDivisions_ = DEFAULT_ENERGY_DIVISION;
+	thresholdEnergy_ = NULL;
 	partitionEnergy();
 }
 	
@@ -75,40 +77,40 @@ double Node :: distance(Node *n1, Node *n2) {
 }
 
 int Node :: enqueuePkt(Packet *p) {
-	pthread_mutex_lock(&pktQueue_mutex);
+	pthread_mutex_lock(&pktEnqueue_mutex);
 	
 	if(pktQueue_.size() == queueLimit_) {
 		fprintf(stderr, "[ERROR]: Packet queue full. Dropping packet.\n");
-		pthread_mutex_unlock(&pktQueue_mutex);
+		pthread_mutex_unlock(&pktEnqueue_mutex);
 		return -1;
 	}
 	pktQueue_.push_back(*p);
+	
+	pthread_mutex_unlock(&pktEnqueue_mutex);
 	
 	// Tracing
 	Simulator& s = Simulator::instance();
 	Trace::instance().format('+', s.pseudoCurrentTime(), p);
 	
-	pthread_mutex_unlock(&pktQueue_mutex);
-	
 	return 0;
 }
 
 int Node :: dequeuePkt() {
-	pthread_mutex_lock(&pktQueue_mutex);
+	pthread_mutex_lock(&pktDequeue_mutex);
 	
 	if(pktQueue_.size() == 0) {
 		fprintf(stderr, "[ERROR]: Packet queue is empty. Cannot deque.\n");
-		pthread_mutex_unlock(&pktQueue_mutex);
+		pthread_mutex_unlock(&pktDequeue_mutex);
 		return -1;
 	}
 	Packet *p = new Packet(pktQueue_.front());
 	pktQueue_.erase(pktQueue_.begin());
 	
+	pthread_mutex_unlock(&pktDequeue_mutex);
+	
 	// Tracing
 	Simulator& s = Simulator::instance();
 	Trace::instance().format('-', s.pseudoCurrentTime(), p);
-	
-	pthread_mutex_unlock(&pktQueue_mutex);
 	
 	delete p;	//Temporary one deleted
 	return 0;
@@ -116,68 +118,116 @@ int Node :: dequeuePkt() {
 
 //Deque packet and send to node 'n'
 int Node :: send(Node *n) {
-	pthread_mutex_lock(&send_mutex);
+	//pthread_mutex_lock(&send_mutex);
 	
 	if(pktQueue_.empty()) {
 		fprintf(stderr, "[ERROR]: Packet queue is empty. Cannot send.\n");
-		pthread_mutex_unlock(&send_mutex);
+		//pthread_mutex_unlock(&send_mutex);
 		return -1;
 	}
 	if(!n) {
 		fprintf(stderr, "[ERROR]: Recieving node is not defined. Cannot send.\n");
-		pthread_mutex_unlock(&send_mutex);
+		//pthread_mutex_unlock(&send_mutex);
 		return -1;
 	}
-	Packet *p1 = new Packet(pktQueue_.front()); //Backup before dequeueing it
+	Packet *p = new Packet(pktQueue_.front()); //Backup before dequeueing it
 	dequeuePkt();
-	p1->destId_ = n->id_;
-	p1->forwarderId_ = id_;
-	n->recv(p1);
+	p->destId_ = n->id_;
+	p->forwarderId_ = id_;
 	
-	Energy::spend(this, TX);	//energy consumption by transmitter
-	
-	/* Tracing
+	// TODO... Add the bandwidth and delay logic here
 	Simulator& s = Simulator::instance();
+	double pktTransmissionTime = (p->size() * 8) / (bandwidth_ * 1000);
+	double pktPropagationDelay = (distance(this, s.node(p->destId_)) / MAC::propagationSpeed_) * (p->size() * 8);
+	double totalLatency = pktTransmissionTime + pktPropagationDelay;
+	
+	//printf("Latency = %lf, PTT = %lf, PPD = %lf\n", totalLatency, pktTransmissionTime, pktPropagationDelay);
+	//fflush(stdout);
+	
+	s.delay(totalLatency);
+	
+	//@@@ Alternative solution provided by the system is nanosleep()
+	
+	n->recv(p);
+	
+	Energy::spend(this, p, TX);	//energy consumption by transmitter
+	
+	/*XXX Tracing
 	Trace::instance().format('s', s.pseudoCurrentTime(), p1);
 	*/
-	pthread_mutex_unlock(&send_mutex);
+	//pthread_mutex_unlock(&send_mutex);
 	
-	delete p1;	//Temporary one deleted
+	delete p;	//Temporary one deleted
 	return 0;
 }
 
 // Send the packet p to the node n without queueing
 int Node :: send(Node *n, Packet *p) {
-	pthread_mutex_lock(&send_mutex);
+	//pthread_mutex_lock(&send_mutex);
 	
 	p->forwarderId_ = id_;
+	
+	// TODO... Add the bandwidth and delay logic here
+	Simulator& s = Simulator::instance();
+	double pktTransmissionTime = (p->size() * 8) / (bandwidth_ * 1000);
+	double pktPropagationDelay = (distance(this, s.node(p->destId_)) / MAC::propagationSpeed_) * (p->size() * 8);
+	double totalLatency = pktTransmissionTime + pktPropagationDelay;
+	
+	s.delay(totalLatency);
+	
 	n->recv(p);
-	Energy::spend(this, TX); //energy consumption by transmitter
+	Energy::spend(this, p, TX); //energy consumption by transmitter
+	
+	/*XXX Tracing
+	Simulator& s = Simulator::instance();
+	Trace::instance().format('s', s.pseudoCurrentTime(), p);
+	*/
+	//pthread_mutex_unlock(&send_mutex);
+	
+	return 0;
+}
+
+// Send the packet p to the node n without queueing and no bandwidth delay. (Used for broadcasting only)
+int Node :: sendHighPriority(Node *n, Packet *p) {
+	//pthread_mutex_lock(&send_mutex);
+	
+	p->forwarderId_ = id_;
+	
+	n->recvHighPriority(p);
+	
+	Energy::spend(this, p, TX); //energy consumption by transmitter
 	
 	/* Tracing
 	Simulator& s = Simulator::instance();
 	Trace::instance().format('s', s.pseudoCurrentTime(), p);
 	*/
-	pthread_mutex_unlock(&send_mutex);
+	//pthread_mutex_unlock(&send_mutex);
 	
 	return 0;
 }
 
-// Broadcast packet p
+// Broadcast packet p (Currently only mend for broadcasting relax packet)
 int Node :: broadcast(Packet *p) {
+	
+	// TODO... Add the constant bandwidth and delay logic here
+	Simulator& s = Simulator::instance();
+	double pktTransmissionTime = (p->size() * 8) / (bandwidth_ * 1000);
+	double pktPropagationDelay = (transmissionRange_ / MAC::propagationSpeed_) * (p->size() * 8); //XXX
+	double totalLatency = pktTransmissionTime + pktPropagationDelay;
+	
+	s.delay(totalLatency);
+	
 	for(int i=0; i<nneighbours_; i++)
 		if(neighbours_[i] && (neighbours_[i] != this))
-			send(neighbours_[i], p);
+			sendHighPriority(neighbours_[i], p);
 	return 0;
 }
 
 // Recieve and enqueue packet
 int Node :: recv(Packet *p) {
-	pthread_mutex_lock(&recv_mutex);
+	//pthread_mutex_lock(&recv_mutex);
 	
-	// Tracing
-	Simulator& s = Simulator::instance();
-	Trace::instance().format('r', s.pseudoCurrentTime(), p);
+	Energy::spend(this, p, RX); //energy consumption by receiver
 	
 	if(enqueuePkt(p) == -1) {	//Queue full
 		// Drop packet
@@ -186,18 +236,45 @@ int Node :: recv(Packet *p) {
 		Simulator& s = Simulator::instance();
 		Trace::instance().format('d', s.pseudoCurrentTime(), p);
 	
-		delete p;
-		pthread_mutex_unlock(&recv_mutex);
+		//XXX...delete p;	'double free() error'
+		
+		//pthread_mutex_unlock(&recv_mutex);
 		return -1;
 	}
+	
+	// Tracing
+	Simulator& s = Simulator::instance();
+	Trace::instance().format('r', s.pseudoCurrentTime(), p);
+	
 	Packet& p1 = pktQueue_.back();
 	printf("[PACKET_RECIEVED]: s=%d d=%d f=%d payload='%s'\n", p1.sourceId_, p1.destId_, p1.forwarderId_, p1.payload_); 
 	
-	Energy::spend(this, RX); //energy consumption by receiver
-	
-	pthread_mutex_unlock(&recv_mutex);
+	//pthread_mutex_unlock(&recv_mutex);
 	
 	return 0;
+}
+
+// Recieve and without enqueuing the packet, execute the command send by the packet
+int Node :: recvHighPriority(Packet *p) {
+	//pthread_mutex_lock(&recv_mutex);
+	
+	Energy::spend(this, p, RX); //energy consumption by receiver
+	
+	// Tracing
+	Simulator& s = Simulator::instance();
+	Trace::instance().format('r', s.pseudoCurrentTime(), p);
+	
+	printf("[PACKET_RECIEVED]: s=%d d=%d f=%d payload='%s'\n", p->sourceId_, p->destId_, p->forwarderId_, p->payload_); 
+	
+	//pthread_mutex_unlock(&recv_mutex);
+	
+	return 0;
+}
+
+// This calls selectNextHop() and forwards packet to it. Not called by 'NCH' nodes.
+void Node :: forwardData() {
+	selectNextHop();
+	send(nextHop_);
 }
 
 // Generate application data by a Non-CH sensor node
@@ -208,21 +285,25 @@ void Node :: eventData(const char* data) {
 	pthread_mutex_lock(&eventData_mutex);
 	
 	strcpy(eventData_, data);
-	sprintf(str, "%s [Node=%d, Cluster=%d]\n", data, id_, clusterId_);
-	Packet p(this->id_, clusterHead()->id_, str, "sensor");
 	
 	pthread_mutex_unlock(&eventData_mutex);
 	
+	sprintf(str, "%s [Node=%d, Cluster=%d]\n", data, id_, clusterId_);
+	Packet *p = new Packet(this->id_, clusterHead()->id_, str, "sensor");
+	p->forwarderId_ = this->id_;
+	
 	// Tracing
 	Simulator& s = Simulator::instance();
-	Trace::instance().format('e', s.pseudoCurrentTime(), &p);
+	Trace::instance().format('e', s.pseudoCurrentTime(), p);
 	
-	if(enqueuePkt(&p) == -1) {
+	if(enqueuePkt(p) == -1) {
 		//XXX... Possibly wait for queue to be available
 		fprintf(stderr, "[ERROR]: Packet queue is full. Application data will be dropped or waiting.\n");
 	}
 	
-	Energy::spend(this, SENSOR);	//energy consumption by sensor
+	Energy::spend(this, p, SENSOR);	//energy consumption by sensor
+	
+	delete p;
 }
 
 // TODO... Make similar function for 'achTable_'
@@ -326,15 +407,19 @@ Node* Node :: findAssistantCH() {
 
 // Generate threshold energy partition
 void Node :: partitionEnergy() {
-	double perPercent = 100.0 / ENERGY_DIVISION;
+	if(thresholdEnergy_)
+		delete[] thresholdEnergy_; //Delete the original and recreate
+	thresholdEnergy_ = new double[energyDivisions_+1];
+	
+	double perPercent = 100.0 / energyDivisions_;
 	double perDivisionEnergy = maxEnergy_ * (perPercent / 100.0);
 	thresholdEnergy_[0] = maxEnergy_;
-	for(int i=1; i<ENERGY_DIVISION; i++) {
+	for(int i=1; i<energyDivisions_; i++) {
 		thresholdEnergy_[i] = thresholdEnergy_[i-1] - perDivisionEnergy;
 	}
 	/*
 	printf("Energy Partitions = ");
-	for(int i=0; i<ENERGY_DIVISION+1; i++)
+	for(int i=0; i<DEFAULT_ENERGY_DIVISION+1; i++)
 		printf("%.2lf\t", thresholdEnergy_[i]);
 	printf("\n");
 	*/
@@ -342,19 +427,21 @@ void Node :: partitionEnergy() {
 
 // Check if energy level has reached a threshold
 int Node :: reachedThreshold() {
-	pthread_mutex_lock(&threshold_mutex);
+	//pthread_mutex_lock(&threshold_mutex);
 	
 	// XXX... Not tested yet
-	if(thresholdLevel_ > ENERGY_DIVISION+1) {
+	if(thresholdLevel_ > energyDivisions_+1) {
 		printf("[INFO]: Node(%d) is dead\n", id_);
+		//pthread_mutex_unlock(&threshold_mutex);
 		return -2;	//Node dead
 	}
 	if(energy_ <= thresholdEnergy_[thresholdLevel_]) {
 		thresholdLevel_++;
+		//pthread_mutex_unlock(&threshold_mutex);
 		return 0;	//Reached a threshold bound
 	}
 	
-	pthread_mutex_unlock(&threshold_mutex);
+	//pthread_mutex_unlock(&threshold_mutex);
 	
 	return -1;	//Not yet
 		
@@ -370,11 +457,17 @@ void Node :: selectNextHop() {
 	CTableEntry* maxEnergy = chTable_->maxEnergyEntry();
 	Simulator& sim = Simulator::instance();
 	while(*ptr != (CTableEntry*)0) {
-		// difference between 'highest_energy' and 'enery_of_currently_selected_node' is compared against energyGapThreshold
-		if(abs(maxEnergy->node_->energy() - ptr[0][0].node_->energy()) < sim.energyGapThreshold()) {
-			nextHop_ = ptr[0][0].node_;
-			break;
-		}
+		// difference between 'highest_energy' and 'energy_of_currently_selected_node' is compared against 'energyGapThreshold'
+		//if(ptr[0][0].node_->state() == ACTIVE_MODE) {
+			if(abs(maxEnergy->node_->energy() - ptr[0][0].node_->energy()) < sim.energyGapThreshold()) {
+				nextHop_ = ptr[0][0].node_;
+				break;
+			}
+		//}
+		//else {
+			//fprintf(stdout, "[INFO]: Node(%d) is in either SLEEP_MODE or DEAD_MODE. Skipping!\n", ptr[0]->node_->id());
+			
+		//}
 		ptr++;
 	}
 	if(*ptr == (CTableEntry*)0) {
@@ -385,17 +478,15 @@ void Node :: selectNextHop() {
 	// TODO... Search in ACH table if not found in CH table
 }
 
-// This calls selectNextHop() and forwards packet to it. Not called by 'NCH' nodes.
-void Node :: forwardData() {
-	selectNextHop();
-	send(nextHop_);
-}
-
 // Broadcast a relaxation packet. This packet is transmitted without being queued.
 int Node :: notifyRelax() {
-	RelaxPacket p(this->id_, clusterHead()->id_, "[Notify]: News for relaxation.", "relax");
-	p.sourceId_ = id_;
+	if(nodeType_ == BS)
+		return -1;
+	
+	RelaxPacket p(this->id_, BROADCAST_ADDRESS, "[Notify]: News for relaxation.", "relax");
+	//p.sourceId_ = id_;
 	p.destId_ = BROADCAST_ADDRESS;
+	p.forwarderId_ = id_;
 	p.notifyType_ = RELAXATION;
 	p.currentEnergy_ = energy_;
 	
@@ -403,14 +494,23 @@ int Node :: notifyRelax() {
 	Simulator& s = Simulator::instance();
 	Trace::instance().format('n', s.pseudoCurrentTime(), &p);
 	
-	return broadcast(&p);
+	broadcast(&p);
+	
+	//TODO...Change state to SLEEP
+	state_ = SLEEP_MODE;
+	
+	return 0;
 }
 
 // Broadcast a activation packet. This packet is transmitted without being queued.
 int Node :: notifyActive() {
-	RelaxPacket p(this->id_, clusterHead()->id_, "[Notify]: News for activation.", "active");
-	p.sourceId_ = id_;
+	if(nodeType_ == BS)
+		return -1;
+	
+	RelaxPacket p(this->id_, BROADCAST_ADDRESS, "[Notify]: News for activation.", "active");
+	//p.sourceId_ = id_;
 	p.destId_ = BROADCAST_ADDRESS;
+	p.forwarderId_ = id_;
 	p.notifyType_ = ACTIVATION;
 	p.currentEnergy_ = energy_;
 	
@@ -418,5 +518,9 @@ int Node :: notifyActive() {
 	Simulator& s = Simulator::instance();
 	Trace::instance().format('n', s.pseudoCurrentTime(), &p);
 	
-	return broadcast(&p);
+	broadcast(&p);
+	
+	state_ = ACTIVE_MODE;
+	
+	return 0;
 }

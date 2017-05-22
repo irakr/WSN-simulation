@@ -18,7 +18,7 @@ struct TraceFormat {
 	int fromNode_;	// Node ids
 	int toNode_;
 	char pktType_[16];
-	unsigned short pktSize_;
+	size_t pktSize_;
 	unsigned int pktId_; // Unique id of pkt
 };
 

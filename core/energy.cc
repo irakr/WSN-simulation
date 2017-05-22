@@ -7,29 +7,32 @@
 #include "energy.h"
 #include "simulator.h"
 
-const double Energy :: energyPerBitTx = 1.0;
-const double Energy :: energyPerBitRx = 0.5;
-const double Energy :: energyPerBitSensor = 0.2;
+const double Energy :: energyPerBitTx = 1.04e-03; //Joules per bit
+const double Energy :: energyPerBitRx = 0.4e-03;
+const double Energy :: energyPerBitSensor = 0.3e-03;
+const double Energy :: energyIdle = 0.2e-03;
 
 extern pthread_mutex_t energy_mutex;
 
 // Reduce energy level according operation type. Then check whether it is required to broadcast a relaxation packet.
-void Energy :: spend(Node *n, EnergyConsumption_t type) {
+void Energy :: spend(Node *n, Packet *p, EnergyConsumption_t type) {
 	pthread_mutex_lock(&energy_mutex);
 	
 	double energy = n->energy();
 	if(type == TX)
-		n->energy(energy - energyPerBitTx);
+		n->energy(energy - (energyPerBitTx * (double)p->size()));
 	else if(type == RX)
-		n->energy(energy - energyPerBitRx);
+		n->energy(energy - (energyPerBitRx* (double)p->size()));
 	else if(type == SENSOR)
-		n->energy(energy - energyPerBitSensor);
+		n->energy(energy - (energyPerBitSensor* (double)p->size()));
+	
+	pthread_mutex_unlock(&energy_mutex);
 	
 	// Check for threshold
-	if(n->reachedThreshold() == 0)
-		n->notifyRelax();
-	else if(n->reachedThreshold() == -2)
-		Simulator::instance().killNode(n);
-		
-	pthread_mutex_unlock(&energy_mutex);
+	if(n->nodeType() != BS) {
+		if(n->reachedThreshold() == 0)
+			n->notifyRelax();
+		else if(n->reachedThreshold() == -2)	//Energy over
+			Simulator::instance().killNode(n);
+	}
 }

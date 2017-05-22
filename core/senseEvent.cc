@@ -13,13 +13,12 @@
 void SenseEventHandler :: handle(Event *e) {
 	// Execute following internal events like- data fowarding to CH, data-aggregation by CH, etc., to the event list
 	//TODO...
-	
-	printf("SENSE_EVENT being handled at %lf\n", Simulator::instance().clock());
+	Simulator& sim = Simulator::instance();
+	printf("SENSE_EVENT at time %lf\n", sim.clock());
 	fflush(stdout);
 	
 	// Get some data to the node
-	Simulator& simulator = Simulator::instance();
-	Node *n = simulator.node(((SenseEvent*)e)->atNode_);
+	Node *n = sim.node(((SenseEvent*)e)->atNode_);
 	n->eventData(SOME_SENSOR_DATA);
 	
 	// Forward sensed data to its CH TODO

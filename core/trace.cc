@@ -16,7 +16,7 @@ Trace* Trace :: instance_;
 void Trace :: traceDump(TraceFormat *format) {
 	pthread_mutex_lock(&trace_mutex);
 	
-	fprintf(traceFile_, "%c %lf %d %d %s %u %u\n", 					\
+	fprintf(traceFile_, "%c %lf %d %d %s %lu %u\n", 					\
 			format->eventType_, format->time_, format->fromNode_,	\
 			format->toNode_, format->pktType_, format->pktSize_,	\
 			format->pktId_);
@@ -49,7 +49,7 @@ void Trace :: format(const char event, const double time, const Packet *pkt) {
 	format.fromNode_ = pkt->forwarderId_;
 	format.toNode_ = pkt->destId_;
 	strcpy(format.pktType_, pkt->type_);
-	format.pktSize_ = sizeof(*pkt);
+	format.pktSize_ = pkt->size();
 	format.pktId_ = pkt->id_;
 	
 	traceDump(&format);

@@ -80,6 +80,10 @@ public:
 	inline double pseudoCurrentTime() {
 		return ((double) ::clock()/CLOCKS_PER_SEC - pseudoStartTime());
 	}
+	inline void delay(double sec) {
+		double end_time = pseudoCurrentTime() + sec;	// Till when the delay should persist
+		while(pseudoCurrentTime() < end_time);
+	}
 	
 	void reset();
 	
@@ -92,6 +96,9 @@ public:
 	double energyGapThreshold() { return energyGapThreshold_; }
 	
 	void killNode(Node*);	// Remove node from the network
+	
+	int eventCount() { return eventCount_; }
+	int totalEvents() { return totalEvents_; }
 	
 private:
 	FILE *configFile_; //Input config file
@@ -106,7 +113,7 @@ private:
 	
 	// Scheduling properties
 	Event *eventList_, *tail_;
-	unsigned int eventCount_;
+	unsigned int eventCount_, totalEvents_;
 	
 	double clock_; // Event start time
 	// This is discrete. For getting the exact continuous time use the 'pseudoCurrentTime_' variable and related.
@@ -116,10 +123,8 @@ private:
 	// The overall simulation time will offset with reference to this time, which means this time is actually = 0(pseudo)
 	double pseudoStartTime_;
 
-	clock_t systemClock_;	// Process's clock time
-	int halted_;
+	//clock_t systemClock_;	// Process's clock time
 	static Simulator* instance_;
-	static int uid_; // The UID of the event that it is currently pointing to.
 	
 };
 

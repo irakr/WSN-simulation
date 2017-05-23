@@ -273,6 +273,10 @@ int Node :: recvHighPriority(Packet *p) {
 // This calls selectNextHop() and forwards packet to it. Not called by 'NCH' nodes.
 int Node :: forwardData() {
 	//@pthread_mutex_lock(&forwardData_mutex);
+	
+	// TODO... A node will always select a next hop freshly and forward data. This might add a
+	// delay packet delivery time but at the same time it provides to the quality of a path.
+	
 	if(selectNextHop() == -1) {
 		fprintf(stderr, "[INFO]: Next hop could not be decided for node(%d)\n", id_);
 		//@pthread_mutex_unlock(&forwardData_mutex);

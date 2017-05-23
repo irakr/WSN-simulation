@@ -11,6 +11,8 @@
 #include <string.h>
 
 
+#define BS_QUEUE_SIZE	1048576		// 1MegaBytes
+
 extern pthread_mutex_t simulatorData_mutex;
 
 Simulator* Simulator :: instance_;
@@ -99,6 +101,7 @@ void Simulator :: init(char *config_file) {
 				else if(strcmp(temp, "BS") == 0) {
 					nodes_[i]->nodeType(BS);
 					bs_ = nodes_[i];
+					bs_->queueLimit(BS_QUEUE_SIZE);
 				}
 				else {
 					fprintf(stderr, "[ERROR]: Unknown node type '%s'\n", temp);
@@ -179,8 +182,9 @@ void Simulator :: init(char *config_file) {
 		}
 		else if(strcmp(temp, "PacketQueueSize") == 0) {	// Default packet queue size
 			unsigned int queueSize = atoi(strtok(NULL, "="));
-			for(int i=0; i<nnodes_; i++)
-				nodes_[i]->queueLimit(queueSize);
+			for(int i=0; i<nnodes_; i++) {
+					nodes_[i]->queueLimit(queueSize);
+			}
 		}
 		else if(strcmp(temp, "EnergyDivisions") == 0) {	// Energy divisions
 			int ed = atoi(strtok(NULL, "="));

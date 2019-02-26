@@ -2,7 +2,7 @@
 Simulation of a routing protocol for Wireless Sensor Networks(WSN).
 
 # Description
-The WSN simulator is networ simulator specifically designed for wireless sensor networks simulations.
+The WSN simulator is network simulator specifically designed for wireless sensor networks simulations.
 It is specifically designed for my own research works. The results may or may not be accurate as other
 widely renown simulation tools like ns2, netsim, opnet, etc.
 It uses a multithreaded approach of running events of a network. It was the best solution that I thought
@@ -14,7 +14,16 @@ This file is used to create simulation environment according to the user's prefe
 
 # Implementation
 - Core system language: C++.
-- Input configuration script: My own format
-- Analysis tools: gnuplot, python, etc.
+- Input configuration script: My own defined format
 
+# How to use
+- make sim
+  (OR)
+- make debug   (For debugging)
+- ./sim input_file.config
+  The simulation will start according to parameters set in the input file. Out is a trace file
+  quite similar to ns2 trace-file format with the name input_file.tr.
+- Trace files can be parsed using your own scripts written in any scripting language like awk,
+  python, etc.
+  
 #						ENJOY

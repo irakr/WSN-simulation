@@ -8,7 +8,7 @@
 
 - Set BS as next hop for nodes one hop away from the BS 								[Done]
 
-- Relaxation packet mechanism 															[Incomplete]
+- Relaxation packet mechanism 															[Done]
 	> The relaxation packet is a high priority packet and so it must be successfully received by
 	  all the neighbours.
 	> Be in sleep mode. [Use a new thread to wait for the specified duration and then rebroadcast
@@ -23,7 +23,9 @@
 - Keeping track of simulation time														[Done]
 
 - Energy consumption mechanism															[Partially Done]
-	> Energy spent per bit = Joules per bit	[Incomplete!!! Still on per operation basis rather than per bit]
+	> Energy spent per bit = Joules per bit	[Done]
+	
+	> Distance is also a factor for energy consumption	[Immediate action required]
 	
 	> Invoke relaxation packet transmission on threshold energy level [!!! Unidentified thread deadlock; SOLVED]
 		> Thread deadlock is occuring somewhere in the call sequence
@@ -32,13 +34,19 @@
 		> Try different mutex type!!!!!!!!!!!!!!!!!!!!!!!!!
 		> Deadlock was in the function Node::reachedThreshold().
 		
+- Energy information sharing														[IMMEDIATE ACTION REQUIRED]
+
 - Generating trace data																	[Done]
 
 - Data transfer rate and energy consumption of multiple bit transmission				[Done]
 	> Packet Transmission time(Latency)
 
-- Real network like situations														[Require immediate attention]
-	> Packet drops
-	> Energy reaching threshold levels
+- Real network like situations														[Need refinement]
+	> Packet drops [Currently depends on queue size only. No other factors]
+	> Energy reaching threshold levels [Done]
 
-- Assign a node as dead
+- Assign a node as dead																	[Done]
+
+- Modify trace format
+	> Add column for current residual energy.	[Done]
+	> Add column for flow id; like ns2. 		[Maybe]

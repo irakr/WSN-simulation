@@ -7,7 +7,8 @@
 #include "energy.h"
 #include "simulator.h"
 
-const double Energy :: energyPerBitTx = 1.04e-03; //Joules per bit
+const double Energy :: energyPerBitTx = 1.04e-03; // Joules per bit
+const double Energy :: energyPerBitTxAmp = 1.0e-9; // XXX...Not yet used
 const double Energy :: energyPerBitRx = 0.4e-03;
 const double Energy :: energyPerBitSensor = 0.3e-03;
 const double Energy :: energyIdle = 0.2e-03;
@@ -31,7 +32,7 @@ void Energy :: spend(Node *n, Packet *p, EnergyConsumption_t type) {
 	// Check for threshold
 	if(n->nodeType() != BS) {
 		int ret = n->reachedThreshold();
-		if(ret == 0)
+		if((ret == 0) && (n->state() == ACTIVE_MODE))
 			n->notifyRelax();
 		else if(ret == -2)	//Energy over
 			Simulator::instance().killNode(n);

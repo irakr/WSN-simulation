@@ -11,8 +11,9 @@
 #include <pthread.h>
 
 
-extern pthread_mutex_t pktEnqueue_mutex, pktDequeue_mutex, 		\
-		threshold_mutex, recv_mutex, send_mutex, eventData_mutex, forwardData_mutex;
+extern pthread_mutex_t pktEnqueue_mutex, pktDequeue_mutex, 			\
+		threshold_mutex, recv_mutex, send_mutex, eventData_mutex,	\
+		forwardData_mutex, relax_mutex;
 
 int Node :: ids_ = 0;	//ID generated and ID count
 const double Node :: maxEnergy_ = 1000;
@@ -110,9 +111,6 @@ int Node :: dequeuePkt() {
 	
 	pthread_mutex_unlock(&pktDequeue_mutex);
 	
-	// Tracing
-	Simulator& s = Simulator::instance();
-	Trace::instance().format('-', s.pseudoCurrentTime(), p);
 	
 	delete p;	//Temporary one deleted
 	return 0;
@@ -133,12 +131,15 @@ int Node :: send(Node *n) {
 		return -1;
 	}
 	Packet *p = new Packet(pktQueue_.front()); //Backup before dequeueing it
-	dequeuePkt();
+	dequeuePkt();	
 	p->destId_ = n->id_;
 	p->forwarderId_ = id_;
 	
-	// TODO... Add the bandwidth and delay logic here
+	// Tracing for dequeuing
 	Simulator& s = Simulator::instance();
+	Trace::instance().format('-', s.pseudoCurrentTime(), p);
+	
+	// TODO... Add the bandwidth and delay logic here
 	double pktTransmissionTime = (p->size() * 8) / (bandwidth_ * 1000);
 	double pktPropagationDelay = (distance(this, s.node(p->destId_)) / MAC::propagationSpeed_) * (p->size() * 8);
 	double totalLatency = pktTransmissionTime + pktPropagationDelay;
@@ -194,7 +195,7 @@ int Node :: sendHighPriority(Node *n, Packet *p) {
 	
 	n->recvHighPriority(p);
 	
-	Energy::spend(this, p, TX); //energy consumption by transmitter
+	//Energy::spend(this, p, TX); //energy consumption by transmitter
 	
 	/* Tracing
 	Simulator& s = Simulator::instance();
@@ -219,6 +220,9 @@ int Node :: broadcast(Packet *p) {
 	for(int i=0; i<nneighbours_; i++)
 		if(neighbours_[i] && (neighbours_[i] != this))
 			sendHighPriority(neighbours_[i], p);
+	
+	Energy::spend(this, p, TX); //energy consumption by transmitter
+	
 	return 0;
 }
 
@@ -227,6 +231,10 @@ int Node :: recv(Packet *p) {
 	//pthread_mutex_lock(&recv_mutex);
 	
 	Energy::spend(this, p, RX); //energy consumption by receiver
+	
+	// Tracing
+	Simulator& s = Simulator::instance();
+	Trace::instance().format('r', s.pseudoCurrentTime(), p);
 	
 	if(enqueuePkt(p) == -1) {	//Queue full
 		// Drop packet
@@ -240,10 +248,6 @@ int Node :: recv(Packet *p) {
 		//pthread_mutex_unlock(&recv_mutex);
 		return -1;
 	}
-	
-	// Tracing
-	Simulator& s = Simulator::instance();
-	Trace::instance().format('r', s.pseudoCurrentTime(), p);
 	
 	//Packet& p1 = pktQueue_.back();
 	printf("[PACKET_RECIEVED]: s=%d d=%d f=%d payload='%s'\n", p->sourceId_, p->destId_, p->forwarderId_, p->payload_); 
@@ -263,7 +267,7 @@ int Node :: recvHighPriority(Packet *p) {
 	Simulator& s = Simulator::instance();
 	Trace::instance().format('r', s.pseudoCurrentTime(), p);
 	
-	printf("[PACKET_RECIEVED]: s=%d d=%d f=%d payload='%s'\n", p->sourceId_, p->destId_, p->forwarderId_, p->payload_); 
+	printf("[NOTIFICATION]: s=%d d=%d f=%d payload='%s'\n", p->sourceId_, p->destId_, p->forwarderId_, p->payload_); 
 	
 	//pthread_mutex_unlock(&recv_mutex);
 	
@@ -524,9 +528,11 @@ int Node :: notifyRelax() {
 	Trace::instance().format('n', s.pseudoCurrentTime(), &p);
 	
 	broadcast(&p);
-	
+	//pthread_mutex_lock(&relax_mutex);
 	// Change state to SLEEP
 	state_ = SLEEP_MODE;
+	
+	//pthread_mutex_unlock(&relax_mutex);
 	
 	// TODO...Create a new thread and let it sleep. After the duration of sleep invoke 'notifyActive()' and exit.
 	sleepArg *arg = new sleepArg;
@@ -564,7 +570,10 @@ int Node :: notifyActive() {
 // Sleep for 'duration' and wake up as ACTIVE
 void* Node :: sleepPeriod(void* arg) {
 	sleepArg *ptr = (sleepArg*)arg;
+	
 	Simulator::instance().delay(ptr->duration_);
+	
 	ptr->node_->notifyActive();
+	
 	return (void*)0;
 }

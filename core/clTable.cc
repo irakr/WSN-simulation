@@ -16,7 +16,7 @@ void CTable :: addEntry(CTableEntry *entry) {
 	entry_[entryCounter_++] = new CTableEntry(*entry);
 }
 
-// Sort according to 'distance_to_BS_'
+// Sort according to 'distance_to_BS_' in increasing order
 void CTable :: sortByBSDistance() {
 	CTableEntry temp;
 	int i, j, minIndex;

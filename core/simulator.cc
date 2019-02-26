@@ -7,6 +7,7 @@
 #include "simulator.h"
 #include "wrappers.h"
 #include "senseEvent.h"
+#include "cbrEvent.h"
 #include <pthread.h>
 #include <string.h>
 
@@ -22,6 +23,7 @@ Simulator :: Simulator() {
 	configFile_ = NULL;
 	nodes_ = NULL;
 	nnodes_ = 0;
+	ndead_nodes = 0;
 	strcpy(proto, "");
 	eventList_ = NULL;
 	nclusters_ = 0;
@@ -167,6 +169,14 @@ void Simulator :: init(char *config_file) {
 					e->time_ = atof(strtok(NULL, ":"));
 					insert(e);
 				}
+				else if(strcmp(temp, "CBR_EVENT") == 0) {
+					CBREvent *e = new CBREvent();
+					e->handler_ = new CBREventHandler();
+					e->atNode_ = atoi(strtok(NULL, ":") + 1);
+					e->startTime_ = atof(strtok(NULL, ":"));
+					e->stopTime_ = atof(strtok(NULL, ":"));
+					insert(e);
+				}
 				else {
 					fprintf(stderr, "[WARNING]: Unknown Event Type : '%s'\n", temp);
 				}
@@ -175,6 +185,11 @@ void Simulator :: init(char *config_file) {
 		else if(strcmp(temp, "Tracefile") == 0) {	// Trace file
 			(new Trace(strtok(NULL, "=")));
 			
+		}
+		else if(strcmp(temp, "EnergyTracefile") == 0) { // Energy trace file
+			char energy_trace_file[128]="";
+			strcpy(energy_trace_file, strtok(NULL, "="));
+			Trace::instance().energyTraceFile(energy_trace_file);
 		}
 		else if(strcmp(temp, "EnergyGapThreshold") == 0) {	// energyGapThreshold
 			energyGapThreshold_ = (atof(strtok(NULL, "=")) / 100.0) * Node::maxEnergy();
@@ -261,7 +276,20 @@ void Simulator :: dispatch(Event *e) {
 
 // Remove node from the network
 void Simulator :: killNode(Node *n) {
+	if(n->state() == DEAD_MODE) {
+		fprintf(stderr, "[WARNING]: Node(%d) is already dead.\n", n->id());
+		return;
+	}
+	double time = pseudoCurrentTime();
 	n->state(DEAD_MODE);
+	char str[100];
+	sprintf(str, "X %lf %d", time, n->id());
+	Trace::instance().traceDump(str);
+	ndead_nodes++;
+	if(ndead_nodes == nnodes_) {
+		printf("[INFO]: All nodes are dead at time %lf\n", time);
+		exit(0);
+	}
 }
 
 //
@@ -275,7 +303,11 @@ void Simulator :: run() {
 	int threadCount = eventCount_;
 	pthread_t *tid_list = new pthread_t[threadCount+1];
 	
-	pseudoStartTime_ = (double)::clock()/CLOCKS_PER_SEC;
+	struct timespec time;
+	clock_gettime(CLOCK_MONOTONIC, &time);
+	
+	pseudoStartTime_ = time.tv_sec;
+	pseudoStartTime_ += (time.tv_nsec / 1e+9);
 	printf("Pseudo start time = %lf\n", pseudoStartTime_);
 	
 	unsigned int i=0;

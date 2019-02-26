@@ -16,6 +16,7 @@ public:
 private:
 	// XXX... Currently these values are per operation rather than per bit.
 	static const double energyPerBitTx;
+	static const double energyPerBitTxAmp;
 	static const double energyPerBitRx;
 	static const double energyPerBitSensor;
 	static const double energyIdle;

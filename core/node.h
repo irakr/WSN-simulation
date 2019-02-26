@@ -53,7 +53,7 @@ public:
 	int id() { return id_; }
 	static double maxEnergy() { return maxEnergy_; }
 	double energy() { return energy_; }
-	void energy(double val) { energy_ = val; }
+	void energy(double val) { energy_ = (val<=0) ? 0 : val; }
 	double* thresholdEnergy() { return thresholdEnergy_; }
 	double transmissionRange() { return transmissionRange_; }
 	void transmissionRange(double val) { transmissionRange_ = val; }
@@ -72,6 +72,7 @@ public:
 	void cluster(int cl) { clusterId_ = cl; }
 	NodeState_t state() { return state_; }
 	void state(NodeState_t st) { state_ = st; }
+	CTable* chTable() { return chTable_; }
 	
 	// Functions ...
 	

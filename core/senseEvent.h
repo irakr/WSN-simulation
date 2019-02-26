@@ -4,8 +4,8 @@
  * Event handler for a 'SENSE_EVENT' event.
  */
 
-#ifndef SENSE_EH_H_
-#define SENSE_EH_H_
+#ifndef SENSE_EVENT_H_
+#define SENSE_EVENT_H_
 
 #include "simulator.h"
 
@@ -17,7 +17,7 @@ public:
 
 class SenseEventHandler : public Handler {
 public:
-	virtual void handle(Event*);	//This is a multithreaded function
+	virtual void handle(Event*);
 	int routeToBs(Node*);	// Route packet from node to BS
 	
 	

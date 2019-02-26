@@ -9,6 +9,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <math.h>
 #include <time.h>
 #include <unistd.h>
 #include "node.h"
@@ -78,12 +79,41 @@ public:
 		return pseudoStartTime_;
 	}
 	
+	/*
 	inline double pseudoCurrentTime() {
 		return ((double) ::clock()/CLOCKS_PER_SEC - pseudoStartTime());
 	}
+	*/
+	
+	inline double pseudoCurrentTime() {
+		struct timespec time;
+		double timef, startTime, integral, fractional;
+		startTime = pseudoStartTime();
+		fractional = modf(startTime, &integral);
+		fractional = fractional * 1e+9;
+		clock_gettime(CLOCK_MONOTONIC, &time);
+		timef = time.tv_sec - integral;
+		timef += (time.tv_nsec - fractional) / 1e+9;
+		return timef;
+	}
+	
+	/*
 	inline void delay(double sec) {
 		double end_time = pseudoCurrentTime() + sec;	// Till when the delay should persist
 		while(pseudoCurrentTime() < end_time);
+	}
+	*/
+	
+	inline void delay(double sec) {
+		double fractional, integral;
+		struct timespec time1;
+		time1.tv_sec = (long)sec;
+		fractional = modf(sec, &integral);
+		time1.tv_nsec = (long)(fractional * 10e9);
+		if(nanosleep(&time1, NULL) < 0) {
+			perror("nanosleep");
+			exit(1);
+		}
 	}
 	
 	void reset();
@@ -100,12 +130,13 @@ public:
 	
 	int eventCount() { return eventCount_; }
 	int totalEvents() { return totalEvents_; }
+	int nnodes() { return nnodes_; }
 	
 	double relaxPeriodTime_;
 	
 private:
 	FILE *configFile_; //Input config file
-	int nnodes_;
+	int nnodes_, ndead_nodes;
 	int nclusters_;	//No of clusters
 	char proto[128]; //Protocol name
 	Node **nodes_; //Array of node pointer objects ([index] == id_)

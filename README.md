@@ -11,16 +11,20 @@ It takes a configuration file as input of which the format is defined by the sof
 To know the details of the configuration format checkout the file 'input.config'.
 This file is used to create simulation environment according to the user's preferences.
 
-
-# Implementation
-- Core system language: C++.
-- Input configuration script: My own defined format
+# Link to the published paper of this simulation
+[A Cluster-Based Routing Protocol for Wireless Sensor Networks-Based IoT System](https://link.springer.com/chapter/10.1007/978-981-99-7077-3_49)
 
 # How to use
-- make sim
+```
+make sim
+```
   (OR)
-- make debug   (For debugging)
-- ./sim input_file.config
+```
+make debug   (For debug build)
+```
+```
+./sim input_file.config
+```
   The simulation will start according to parameters set in the input file. Out is a trace file
   quite similar to ns2 trace-file format with the name input_file.tr.
 - Trace files can be parsed using your own scripts written in any scripting language like awk,
